@@ -27,7 +27,6 @@ const ANGLES = ["front", "rear", "driver side", "passenger side"];
 
 function GeneratePage() {
   const router = useRouter();
-  const { currentPersonaId } = usePersonaStore();
   const createClaim = useServerFn(createSyntheticClaim);
 
   const [policyholder, setPolicyholder] = useState("Jordan Reyes");

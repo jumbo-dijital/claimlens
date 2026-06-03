@@ -4,10 +4,11 @@ export async function streamImage(
   endpoint: string,
   body: Record<string, unknown>,
   onFrame: (dataUrl: string, isFinal: boolean) => void,
+  headers: Record<string, string> = {},
 ): Promise<string> {
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) throw new Error(`Image gen failed: ${res.status} ${await res.text().catch(() => "")}`);
