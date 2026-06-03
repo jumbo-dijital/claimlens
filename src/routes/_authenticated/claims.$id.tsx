@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -130,6 +130,12 @@ function ClaimDetail() {
           </p>
         </div>
         <div className="flex gap-2">
+          {(me?.roles.includes("adjuster") || me?.roles.includes("superadmin")) &&
+            (claim.status === "submitted" || claim.status === "changes_requested") && (
+              <Button asChild variant="secondary">
+                <Link to="/claims/$id/review" params={{ id }}>Review</Link>
+              </Button>
+            )}
           <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
             {assessment ? <RefreshCw className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {analyzing ? "Analyzing…" : assessment ? "Re-run AI analysis" : "Run AI analysis"}
