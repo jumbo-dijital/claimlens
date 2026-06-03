@@ -22,9 +22,10 @@ const DEMO_ACCOUNTS = [
 
 function AuthPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("agent@claimlens.demo");
-  const [password, setPassword] = useState("ClaimLens2026!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
 
   // If already signed in, bounce to home
   useEffect(() => {
