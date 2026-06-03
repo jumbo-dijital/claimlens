@@ -14,7 +14,380 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_assessments: {
+        Row: {
+          claim_id: string
+          created_at: string
+          id: string
+          model: string | null
+          overall_confidence: number | null
+          raw_json: Json | null
+          summary: string | null
+          version: number
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          overall_confidence?: number | null
+          raw_json?: Json | null
+          summary?: string | null
+          version?: number
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          overall_confidence?: number | null
+          raw_json?: Json | null
+          summary?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assessments_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_line_items: {
+        Row: {
+          assessment_id: string
+          confidence: number | null
+          created_at: string
+          damage_type: string
+          edited_by: string | null
+          evidence_image_id: string | null
+          id: string
+          is_deleted: boolean
+          labour_cost: number
+          labour_hours: number
+          location: string
+          part_cost: number
+          rationale: string | null
+          severity: string
+          source: string
+          suggested_repair: string
+        }
+        Insert: {
+          assessment_id: string
+          confidence?: number | null
+          created_at?: string
+          damage_type: string
+          edited_by?: string | null
+          evidence_image_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          labour_cost?: number
+          labour_hours?: number
+          location: string
+          part_cost?: number
+          rationale?: string | null
+          severity?: string
+          source?: string
+          suggested_repair: string
+        }
+        Update: {
+          assessment_id?: string
+          confidence?: number | null
+          created_at?: string
+          damage_type?: string
+          edited_by?: string | null
+          evidence_image_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          labour_cost?: number
+          labour_hours?: number
+          location?: string
+          part_cost?: number
+          rationale?: string | null
+          severity?: string
+          source?: string
+          suggested_repair?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_line_items_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ai_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_line_items_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_line_items_evidence_image_id_fkey"
+            columns: ["evidence_image_id"]
+            isOneToOne: false
+            referencedRelation: "claim_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_persona_id: string | null
+          actor_role: string | null
+          claim_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_persona_id?: string | null
+          actor_role?: string | null
+          claim_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_persona_id?: string | null
+          actor_role?: string | null
+          claim_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_actor_persona_id_fkey"
+            columns: ["actor_persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_images: {
+        Row: {
+          ai_generated: boolean
+          angle: string
+          claim_id: string
+          created_at: string
+          id: string
+          quality_flag: string | null
+          url: string
+        }
+        Insert: {
+          ai_generated?: boolean
+          angle?: string
+          claim_id: string
+          created_at?: string
+          id?: string
+          quality_flag?: string | null
+          url: string
+        }
+        Update: {
+          ai_generated?: boolean
+          angle?: string
+          claim_id?: string
+          created_at?: string
+          id?: string
+          quality_flag?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_images_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claims: {
+        Row: {
+          claim_number: string
+          created_at: string
+          current_agent_id: string | null
+          current_reviewer_id: string | null
+          id: string
+          incident_date: string
+          incident_description: string | null
+          policy_number: string
+          policyholder_name: string
+          status: string
+          updated_at: string
+          vehicle_class: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string | null
+          vehicle_year: number
+        }
+        Insert: {
+          claim_number: string
+          created_at?: string
+          current_agent_id?: string | null
+          current_reviewer_id?: string | null
+          id?: string
+          incident_date: string
+          incident_description?: string | null
+          policy_number: string
+          policyholder_name: string
+          status?: string
+          updated_at?: string
+          vehicle_class?: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate?: string | null
+          vehicle_year: number
+        }
+        Update: {
+          claim_number?: string
+          created_at?: string
+          current_agent_id?: string | null
+          current_reviewer_id?: string | null
+          id?: string
+          incident_date?: string
+          incident_description?: string | null
+          policy_number?: string
+          policyholder_name?: string
+          status?: string
+          updated_at?: string
+          vehicle_class?: string
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_plate?: string | null
+          vehicle_year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_current_agent_id_fkey"
+            columns: ["current_agent_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_current_reviewer_id_fkey"
+            columns: ["current_reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personas: {
+        Row: {
+          avatar_color: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          avatar_color?: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+        }
+        Update: {
+          avatar_color?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      repair_catalog: {
+        Row: {
+          base_labour_hours: number
+          base_part_cost: number
+          id: string
+          labour_rate: number
+          notes: string | null
+          part_name: string
+          vehicle_class: string
+        }
+        Insert: {
+          base_labour_hours: number
+          base_part_cost: number
+          id?: string
+          labour_rate?: number
+          notes?: string | null
+          part_name: string
+          vehicle_class?: string
+        }
+        Update: {
+          base_labour_hours?: number
+          base_part_cost?: number
+          id?: string
+          labour_rate?: number
+          notes?: string | null
+          part_name?: string
+          vehicle_class?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          claim_id: string
+          comment: string | null
+          created_at: string
+          decision: string
+          id: string
+          reviewer_id: string | null
+        }
+        Insert: {
+          claim_id: string
+          comment?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          reviewer_id?: string | null
+        }
+        Update: {
+          claim_id?: string
+          comment?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          reviewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
