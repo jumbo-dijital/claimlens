@@ -148,7 +148,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
-      actor_persona_id: data.personaId,
+      actor_user_id: context.userId,
       actor_role: "system",
       action: "ai_analysis_completed",
       details: {
