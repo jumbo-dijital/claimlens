@@ -22,7 +22,7 @@ import { Sparkles, Send, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import { editLineItem, submitForApproval } from "@/lib/claim-actions.functions";
 
-export const Route = createFileRoute("/claims/$id")({
+export const Route = createFileRoute("/_authenticated/claims/$id")({
   head: () => ({ meta: [{ title: "Claim — ClaimLens" }] }),
   component: ClaimDetail,
 });

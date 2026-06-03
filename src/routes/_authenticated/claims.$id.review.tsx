@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency } from "@/lib/format";
 import { reviewClaim } from "@/lib/claim-actions.functions";
 
-export const Route = createFileRoute("/claims/$id/review")({
+export const Route = createFileRoute("/_authenticated/claims/$id/review")({
   component: ReviewPage,
 });
 

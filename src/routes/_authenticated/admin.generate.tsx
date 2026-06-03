@@ -19,7 +19,7 @@ import { streamImage } from "@/lib/stream-image";
 import { createSyntheticClaim } from "@/lib/claim-actions.functions";
 import { usePersonaStore } from "@/lib/persona-store";
 
-export const Route = createFileRoute("/admin/generate")({
+export const Route = createFileRoute("/_authenticated/admin/generate")({
   component: GeneratePage,
 });
 

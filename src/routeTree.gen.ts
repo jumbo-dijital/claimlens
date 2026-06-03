@@ -9,126 +9,145 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuditRouteImport } from './routes/audit'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ClaimsIdRouteImport } from './routes/claims.$id'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiGenerateDamageImageRouteImport } from './routes/api/generate-damage-image'
-import { Route as AdminGenerateRouteImport } from './routes/admin.generate'
-import { Route as ClaimsIdReviewRouteImport } from './routes/claims.$id.review'
+import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
+import { Route as AuthenticatedClaimsIdRouteImport } from './routes/_authenticated/claims.$id'
+import { Route as AuthenticatedAdminGenerateRouteImport } from './routes/_authenticated/admin.generate'
+import { Route as AuthenticatedClaimsIdReviewRouteImport } from './routes/_authenticated/claims.$id.review'
 
-const AuditRoute = AuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClaimsIdRoute = ClaimsIdRouteImport.update({
-  id: '/claims/$id',
-  path: '/claims/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiGenerateDamageImageRoute = ApiGenerateDamageImageRouteImport.update({
   id: '/api/generate-damage-image',
   path: '/api/generate-damage-image',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminGenerateRoute = AdminGenerateRouteImport.update({
-  id: '/admin/generate',
-  path: '/admin/generate',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ClaimsIdReviewRoute = ClaimsIdReviewRouteImport.update({
-  id: '/review',
-  path: '/review',
-  getParentRoute: () => ClaimsIdRoute,
+const AuthenticatedClaimsIdRoute = AuthenticatedClaimsIdRouteImport.update({
+  id: '/claims/$id',
+  path: '/claims/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminGenerateRoute =
+  AuthenticatedAdminGenerateRouteImport.update({
+    id: '/admin/generate',
+    path: '/admin/generate',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClaimsIdReviewRoute =
+  AuthenticatedClaimsIdReviewRouteImport.update({
+    id: '/review',
+    path: '/review',
+    getParentRoute: () => AuthenticatedClaimsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/audit': typeof AuditRoute
-  '/admin/generate': typeof AdminGenerateRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
-  '/claims/$id': typeof ClaimsIdRouteWithChildren
-  '/claims/$id/review': typeof ClaimsIdReviewRoute
+  '/admin/generate': typeof AuthenticatedAdminGenerateRoute
+  '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
+  '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/audit': typeof AuditRoute
-  '/admin/generate': typeof AdminGenerateRoute
+  '/auth': typeof AuthRoute
+  '/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
-  '/claims/$id': typeof ClaimsIdRouteWithChildren
-  '/claims/$id/review': typeof ClaimsIdReviewRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/admin/generate': typeof AuthenticatedAdminGenerateRoute
+  '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
+  '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/audit': typeof AuditRoute
-  '/admin/generate': typeof AdminGenerateRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
-  '/claims/$id': typeof ClaimsIdRouteWithChildren
-  '/claims/$id/review': typeof ClaimsIdReviewRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/generate': typeof AuthenticatedAdminGenerateRoute
+  '/_authenticated/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
+  '/_authenticated/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/audit'
-    | '/admin/generate'
     | '/api/generate-damage-image'
+    | '/admin/generate'
     | '/claims/$id'
     | '/claims/$id/review'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/auth'
     | '/audit'
-    | '/admin/generate'
     | '/api/generate-damage-image'
+    | '/'
+    | '/admin/generate'
     | '/claims/$id'
     | '/claims/$id/review'
   id:
     | '__root__'
-    | '/'
-    | '/audit'
-    | '/admin/generate'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/audit'
     | '/api/generate-damage-image'
-    | '/claims/$id'
-    | '/claims/$id/review'
+    | '/_authenticated/'
+    | '/_authenticated/admin/generate'
+    | '/_authenticated/claims/$id'
+    | '/_authenticated/claims/$id/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AuditRoute: typeof AuditRoute
-  AdminGenerateRoute: typeof AdminGenerateRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ApiGenerateDamageImageRoute: typeof ApiGenerateDamageImageRoute
-  ClaimsIdRoute: typeof ClaimsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/audit': {
-      id: '/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuditRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/claims/$id': {
-      id: '/claims/$id'
-      path: '/claims/$id'
-      fullPath: '/claims/$id'
-      preLoaderRoute: typeof ClaimsIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/generate-damage-image': {
       id: '/api/generate-damage-image'
@@ -137,42 +156,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateDamageImageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/generate': {
-      id: '/admin/generate'
+    '/_authenticated/audit': {
+      id: '/_authenticated/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/claims/$id': {
+      id: '/_authenticated/claims/$id'
+      path: '/claims/$id'
+      fullPath: '/claims/$id'
+      preLoaderRoute: typeof AuthenticatedClaimsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/generate': {
+      id: '/_authenticated/admin/generate'
       path: '/admin/generate'
       fullPath: '/admin/generate'
-      preLoaderRoute: typeof AdminGenerateRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedAdminGenerateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/claims/$id/review': {
-      id: '/claims/$id/review'
+    '/_authenticated/claims/$id/review': {
+      id: '/_authenticated/claims/$id/review'
       path: '/review'
       fullPath: '/claims/$id/review'
-      preLoaderRoute: typeof ClaimsIdReviewRouteImport
-      parentRoute: typeof ClaimsIdRoute
+      preLoaderRoute: typeof AuthenticatedClaimsIdReviewRouteImport
+      parentRoute: typeof AuthenticatedClaimsIdRoute
     }
   }
 }
 
-interface ClaimsIdRouteChildren {
-  ClaimsIdReviewRoute: typeof ClaimsIdReviewRoute
+interface AuthenticatedClaimsIdRouteChildren {
+  AuthenticatedClaimsIdReviewRoute: typeof AuthenticatedClaimsIdReviewRoute
 }
 
-const ClaimsIdRouteChildren: ClaimsIdRouteChildren = {
-  ClaimsIdReviewRoute: ClaimsIdReviewRoute,
+const AuthenticatedClaimsIdRouteChildren: AuthenticatedClaimsIdRouteChildren = {
+  AuthenticatedClaimsIdReviewRoute: AuthenticatedClaimsIdReviewRoute,
 }
 
-const ClaimsIdRouteWithChildren = ClaimsIdRoute._addFileChildren(
-  ClaimsIdRouteChildren,
-)
+const AuthenticatedClaimsIdRouteWithChildren =
+  AuthenticatedClaimsIdRoute._addFileChildren(
+    AuthenticatedClaimsIdRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminGenerateRoute: typeof AuthenticatedAdminGenerateRoute
+  AuthenticatedClaimsIdRoute: typeof AuthenticatedClaimsIdRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAuditRoute: AuthenticatedAuditRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminGenerateRoute: AuthenticatedAdminGenerateRoute,
+  AuthenticatedClaimsIdRoute: AuthenticatedClaimsIdRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AuditRoute: AuditRoute,
-  AdminGenerateRoute: AdminGenerateRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   ApiGenerateDamageImageRoute: ApiGenerateDamageImageRoute,
-  ClaimsIdRoute: ClaimsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -4,9 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 
-export const Route = createFileRoute("/audit")({
+export const Route = createFileRoute("/_authenticated/audit")({
   component: AuditPage,
 });
+
+interface AuditRow {
+  id: string;
+  created_at: string;
+  action: string;
+  actor_role: string | null;
+  actor_user_id: string | null;
+  details: unknown;
+  claim_id: string | null;
+  claims?: { claim_number?: string } | null;
+  profiles?: { display_name?: string } | null;
+}
 
 function AuditPage() {
   const { data: logs = [] } = useQuery({
@@ -14,10 +26,10 @@ function AuditPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("audit_log")
-        .select("*, personas(name, role), claims(claim_number)")
+        .select("*, profiles:actor_user_id(display_name), claims(claim_number)")
         .order("created_at", { ascending: false })
         .limit(200);
-      return data ?? [];
+      return (data ?? []) as unknown as AuditRow[];
     },
   });
 
@@ -35,12 +47,12 @@ function AuditPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {logs.map((l: { id: string; created_at: string; action: string; actor_role: string | null; details: unknown; personas?: { name?: string } | null; claims?: { claim_number?: string } | null; claim_id?: string | null }) => (
+            {logs.map((l) => (
               <div key={l.id} className="grid grid-cols-[180px_220px_180px_1fr] items-start gap-4 px-5 py-3 text-sm">
                 <span className="text-xs text-muted-foreground">{formatDateTime(l.created_at)}</span>
                 <span className="font-mono text-xs">{l.action}</span>
                 <span className="text-xs">
-                  {l.personas?.name ?? "—"} <span className="text-muted-foreground">({l.actor_role})</span>
+                  {l.profiles?.display_name ?? "—"} <span className="text-muted-foreground">({l.actor_role})</span>
                 </span>
                 <span className="text-xs">
                   {l.claim_id ? (

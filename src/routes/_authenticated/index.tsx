@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { usePersonaStore } from "@/lib/persona-store";
+import { useMe } from "@/lib/use-me";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -31,46 +31,37 @@ interface ClaimRow {
 }
 
 function ClaimsQueuePage() {
-  const { currentPersonaId } = usePersonaStore();
-
-  const { data: persona } = useQuery({
-    queryKey: ["persona", currentPersonaId],
-    queryFn: async () => {
-      if (!currentPersonaId) return null;
-      const { data } = await supabase.from("personas").select("*").eq("id", currentPersonaId).maybeSingle();
-      return data;
-    },
-    enabled: !!currentPersonaId,
-  });
+  const { data: me } = useMe();
+  const role = me?.roles.includes("superadmin")
+    ? "superadmin"
+    : me?.roles.includes("adjuster")
+      ? "adjuster"
+      : "agent";
 
   const { data: claims = [], isLoading } = useQuery({
-    queryKey: ["claims", persona?.role],
+    queryKey: ["claims", role],
     queryFn: async () => {
       let q = supabase.from("claims").select("*").order("created_at", { ascending: false });
-      if (persona?.role === "adjuster") {
-        q = q.in("status", ["submitted", "approved", "rejected"]);
-      } else if (persona?.role === "agent") {
+      if (role === "adjuster") {
+        q = q.in("status", ["submitted", "approved", "rejected", "changes_requested"]);
+      } else if (role === "agent") {
         q = q.in("status", ["new", "ai_processing", "in_review", "changes_requested", "submitted"]);
       }
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ClaimRow[];
     },
-    enabled: !!persona,
+    enabled: !!me,
   });
 
   const title =
-    persona?.role === "adjuster"
-      ? "Review queue"
-      : persona?.role === "superadmin"
-      ? "All claims"
-      : "My claims";
+    role === "adjuster" ? "Review queue" : role === "superadmin" ? "All claims" : "My claims";
   const subtitle =
-    persona?.role === "adjuster"
+    role === "adjuster"
       ? "Assessments awaiting your approval"
-      : persona?.role === "superadmin"
-      ? "All claims across the system"
-      : "Claims assigned to you for AI-assisted review";
+      : role === "superadmin"
+        ? "All claims across the system"
+        : "Claims assigned to you for AI-assisted review";
 
   return (
     <div className="space-y-6">
@@ -79,7 +70,7 @@ function ClaimsQueuePage() {
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        {persona?.role === "superadmin" && (
+        {role === "superadmin" && (
           <Button asChild>
             <Link to="/admin/generate">
               <ScanEye className="mr-2 h-4 w-4" />
@@ -100,7 +91,7 @@ function ClaimsQueuePage() {
             <div className="grid place-items-center py-16 text-center">
               <FileQuestion className="h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">No claims in this queue</p>
-              {persona?.role === "superadmin" && (
+              {role === "superadmin" && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Use the generate claim flow to seed synthetic claims.
                 </p>
