@@ -240,7 +240,6 @@ function ClaimDetail() {
                           if (!rationale || rationale.trim().length < 3) return;
                           await edit({
                             data: {
-                              personaId: currentPersonaId,
                               lineItemId: li.id,
                               patch: { is_deleted: true },
                               rationale,
@@ -271,7 +270,7 @@ function ClaimDetail() {
           onClose={() => setEditing(null)}
           onSave={async (patch, rationale) => {
             await edit({
-              data: { personaId: currentPersonaId, lineItemId: editing.id, patch, rationale },
+              data: { lineItemId: editing.id, patch, rationale },
             });
             setEditing(null);
             refetchItems();
