@@ -13,9 +13,9 @@ export interface Me {
 
 export function useMe() {
   const fn = useServerFn(getMe);
-  return useQuery<Me>({
+  return useQuery<Me | null>({
     queryKey: ["me"],
-    queryFn: () => fn() as Promise<Me>,
+    queryFn: () => fn() as Promise<Me | null>,
     staleTime: 60_000,
   });
 }
