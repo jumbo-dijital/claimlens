@@ -9,38 +9,113 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClaimsIdRouteImport } from './routes/claims.$id'
+import { Route as ApiGenerateDamageImageRouteImport } from './routes/api/generate-damage-image'
+import { Route as AdminGenerateRouteImport } from './routes/admin.generate'
+import { Route as ClaimsIdReviewRouteImport } from './routes/claims.$id.review'
 
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClaimsIdRoute = ClaimsIdRouteImport.update({
+  id: '/claims/$id',
+  path: '/claims/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateDamageImageRoute = ApiGenerateDamageImageRouteImport.update({
+  id: '/api/generate-damage-image',
+  path: '/api/generate-damage-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminGenerateRoute = AdminGenerateRouteImport.update({
+  id: '/admin/generate',
+  path: '/admin/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClaimsIdReviewRoute = ClaimsIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ClaimsIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
+  '/claims/$id': typeof ClaimsIdRouteWithChildren
+  '/claims/$id/review': typeof ClaimsIdReviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
+  '/claims/$id': typeof ClaimsIdRouteWithChildren
+  '/claims/$id/review': typeof ClaimsIdReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
+  '/claims/$id': typeof ClaimsIdRouteWithChildren
+  '/claims/$id/review': typeof ClaimsIdReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/audit'
+    | '/admin/generate'
+    | '/api/generate-damage-image'
+    | '/claims/$id'
+    | '/claims/$id/review'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/audit'
+    | '/admin/generate'
+    | '/api/generate-damage-image'
+    | '/claims/$id'
+    | '/claims/$id/review'
+  id:
+    | '__root__'
+    | '/'
+    | '/audit'
+    | '/admin/generate'
+    | '/api/generate-damage-image'
+    | '/claims/$id'
+    | '/claims/$id/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
+  AdminGenerateRoute: typeof AdminGenerateRoute
+  ApiGenerateDamageImageRoute: typeof ApiGenerateDamageImageRoute
+  ClaimsIdRoute: typeof ClaimsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +123,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/claims/$id': {
+      id: '/claims/$id'
+      path: '/claims/$id'
+      fullPath: '/claims/$id'
+      preLoaderRoute: typeof ClaimsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/generate-damage-image': {
+      id: '/api/generate-damage-image'
+      path: '/api/generate-damage-image'
+      fullPath: '/api/generate-damage-image'
+      preLoaderRoute: typeof ApiGenerateDamageImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/generate': {
+      id: '/admin/generate'
+      path: '/admin/generate'
+      fullPath: '/admin/generate'
+      preLoaderRoute: typeof AdminGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/claims/$id/review': {
+      id: '/claims/$id/review'
+      path: '/review'
+      fullPath: '/claims/$id/review'
+      preLoaderRoute: typeof ClaimsIdReviewRouteImport
+      parentRoute: typeof ClaimsIdRoute
+    }
   }
 }
 
+interface ClaimsIdRouteChildren {
+  ClaimsIdReviewRoute: typeof ClaimsIdReviewRoute
+}
+
+const ClaimsIdRouteChildren: ClaimsIdRouteChildren = {
+  ClaimsIdReviewRoute: ClaimsIdReviewRoute,
+}
+
+const ClaimsIdRouteWithChildren = ClaimsIdRoute._addFileChildren(
+  ClaimsIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
+  AdminGenerateRoute: AdminGenerateRoute,
+  ApiGenerateDamageImageRoute: ApiGenerateDamageImageRoute,
+  ClaimsIdRoute: ClaimsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
