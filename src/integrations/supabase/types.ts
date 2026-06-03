@@ -139,6 +139,7 @@ export type Database = {
           action: string
           actor_persona_id: string | null
           actor_role: string | null
+          actor_user_id: string | null
           claim_id: string | null
           created_at: string
           details: Json | null
@@ -148,6 +149,7 @@ export type Database = {
           action: string
           actor_persona_id?: string | null
           actor_role?: string | null
+          actor_user_id?: string | null
           claim_id?: string | null
           created_at?: string
           details?: Json | null
@@ -157,6 +159,7 @@ export type Database = {
           action?: string
           actor_persona_id?: string | null
           actor_role?: string | null
+          actor_user_id?: string | null
           claim_id?: string | null
           created_at?: string
           details?: Json | null
@@ -316,6 +319,30 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_color: string
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_color?: string
+          created_at?: string
+          display_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_color?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       repair_catalog: {
         Row: {
           base_labour_hours: number
@@ -388,15 +415,42 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "agent" | "adjuster" | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -523,6 +577,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["agent", "adjuster", "superadmin"],
+    },
   },
 } as const

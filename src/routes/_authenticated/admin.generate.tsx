@@ -19,7 +19,7 @@ import { streamImage } from "@/lib/stream-image";
 import { createSyntheticClaim } from "@/lib/claim-actions.functions";
 import { usePersonaStore } from "@/lib/persona-store";
 
-export const Route = createFileRoute("/admin/generate")({
+export const Route = createFileRoute("/_authenticated/admin/generate")({
   component: GeneratePage,
 });
 
@@ -27,7 +27,6 @@ const ANGLES = ["front", "rear", "driver side", "passenger side"];
 
 function GeneratePage() {
   const router = useRouter();
-  const { currentPersonaId } = usePersonaStore();
   const createClaim = useServerFn(createSyntheticClaim);
 
   const [policyholder, setPolicyholder] = useState("Jordan Reyes");
@@ -52,6 +51,9 @@ function GeneratePage() {
     setGenerating(true);
     setPreviews([]);
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
       const angles = ANGLES.slice(0, count);
       const finalImages: { url: string; angle: string }[] = [];
       for (let i = 0; i < angles.length; i++) {
@@ -59,19 +61,19 @@ function GeneratePage() {
         setPreviews((p) => [...p, { angle, url: "", final: false }]);
         const finalUrl = await streamImage(
           "/api/generate-damage-image",
-          { prompt: buildPrompt(angle), model: imgModel },
+          { prompt: buildPrompt(angle) },
           (dataUrl, isFinal) => {
             setPreviews((p) =>
               p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
             );
           },
+          { Authorization: `Bearer ${token}` },
         );
         finalImages.push({ url: finalUrl, angle });
       }
       toast.success("Images generated. Creating claim…");
       const res = await createClaim({
         data: {
-          personaId: currentPersonaId,
           policyholder_name: policyholder,
           vehicle_make: make,
           vehicle_model: model,

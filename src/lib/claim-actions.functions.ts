@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requireRole } from "@/lib/auth-roles.server";
 
 function genClaimNumber() {
   const n = Math.floor(Math.random() * 900000 + 100000);
@@ -8,30 +9,24 @@ function genClaimNumber() {
 }
 
 export const createSyntheticClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
-        personaId: z.string().uuid().nullable(),
-        policyholder_name: z.string().min(1),
-        vehicle_make: z.string().min(1),
-        vehicle_model: z.string().min(1),
+        policyholder_name: z.string().min(1).max(120),
+        vehicle_make: z.string().min(1).max(60),
+        vehicle_model: z.string().min(1).max(60),
         vehicle_year: z.number().int().min(1990).max(2030),
         vehicle_class: z.enum(["standard", "premium"]).default("standard"),
-        incident_description: z.string().default(""),
+        incident_description: z.string().max(2000).default(""),
         images: z
-          .array(z.object({ url: z.string(), angle: z.string() }))
-          .min(1),
+          .array(z.object({ url: z.string().min(1), angle: z.string().max(60) }))
+          .min(1)
+          .max(8),
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
-    // pick an agent to assign
-    const { data: agent } = await supabaseAdmin
-      .from("personas")
-      .select("id")
-      .eq("role", "agent")
-      .maybeSingle();
-
+  .handler(async ({ data, context }) => {
     const { data: claim, error } = await supabaseAdmin
       .from("claims")
       .insert({
@@ -45,7 +40,6 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
         incident_date: new Date().toISOString().slice(0, 10),
         incident_description: data.incident_description,
         status: "new",
-        current_agent_id: agent?.id ?? null,
       })
       .select()
       .single();
@@ -62,7 +56,7 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("audit_log").insert({
       claim_id: claim.id,
-      actor_persona_id: data.personaId,
+      actor_user_id: context.userId,
       actor_role: "superadmin",
       action: "claim_created_synthetic",
       details: { image_count: data.images.length } as never,
@@ -72,24 +66,24 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
   });
 
 export const editLineItem = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "superadmin")])
   .inputValidator((i: unknown) =>
     z
       .object({
-        personaId: z.string().uuid().nullable(),
         lineItemId: z.string().uuid(),
         patch: z.object({
-          suggested_repair: z.string().optional(),
-          part_cost: z.number().optional(),
-          labour_hours: z.number().optional(),
-          labour_cost: z.number().optional(),
-          severity: z.string().optional(),
+          suggested_repair: z.string().max(300).optional(),
+          part_cost: z.number().min(0).max(1_000_000).optional(),
+          labour_hours: z.number().min(0).max(500).optional(),
+          labour_cost: z.number().min(0).max(1_000_000).optional(),
+          severity: z.string().max(40).optional(),
           is_deleted: z.boolean().optional(),
         }),
-        rationale: z.string().min(3),
+        rationale: z.string().min(3).max(1000),
       })
       .parse(i),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { data: before } = await supabaseAdmin
       .from("assessment_line_items")
       .select("*, ai_assessments(claim_id)")
@@ -100,7 +94,7 @@ export const editLineItem = createServerFn({ method: "POST" })
       .update({
         ...data.patch,
         source: "agent",
-        edited_by: data.personaId,
+        edited_by: context.userId,
         rationale: data.rationale,
       })
       .eq("id", data.lineItemId);
@@ -111,8 +105,8 @@ export const editLineItem = createServerFn({ method: "POST" })
     if (claimId) {
       await supabaseAdmin.from("audit_log").insert({
         claim_id: claimId,
-        actor_persona_id: data.personaId,
-        actor_role: "agent",
+        actor_user_id: context.userId,
+        actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
         action: data.patch.is_deleted ? "line_item_removed" : "line_item_edited",
         details: { line_item_id: data.lineItemId, patch: data.patch, rationale: data.rationale } as never,
       });
@@ -121,23 +115,17 @@ export const editLineItem = createServerFn({ method: "POST" })
   });
 
 export const submitForApproval = createServerFn({ method: "POST" })
-  .inputValidator((i: unknown) =>
-    z.object({ claimId: z.string().uuid(), personaId: z.string().uuid().nullable() }).parse(i),
-  )
-  .handler(async ({ data }) => {
-    const { data: adjuster } = await supabaseAdmin
-      .from("personas")
-      .select("id")
-      .eq("role", "adjuster")
-      .maybeSingle();
+  .middleware([requireRole("agent", "superadmin")])
+  .inputValidator((i: unknown) => z.object({ claimId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
     await supabaseAdmin
       .from("claims")
-      .update({ status: "submitted", current_reviewer_id: adjuster?.id ?? null })
+      .update({ status: "submitted" })
       .eq("id", data.claimId);
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
-      actor_persona_id: data.personaId,
-      actor_role: "agent",
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
       action: "submitted_for_approval",
       details: {} as never,
     });
@@ -145,17 +133,17 @@ export const submitForApproval = createServerFn({ method: "POST" })
   });
 
 export const reviewClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("adjuster", "superadmin")])
   .inputValidator((i: unknown) =>
     z
       .object({
         claimId: z.string().uuid(),
-        personaId: z.string().uuid().nullable(),
         decision: z.enum(["approve", "reject", "changes"]),
-        comment: z.string().default(""),
+        comment: z.string().max(2000).default(""),
       })
       .parse(i),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const statusMap: Record<string, string> = {
       approve: "approved",
       reject: "rejected",
@@ -167,14 +155,14 @@ export const reviewClaim = createServerFn({ method: "POST" })
       .eq("id", data.claimId);
     await supabaseAdmin.from("reviews").insert({
       claim_id: data.claimId,
-      reviewer_id: data.personaId,
+      reviewer_id: context.userId,
       decision: data.decision,
       comment: data.comment,
     });
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
-      actor_persona_id: data.personaId,
-      actor_role: "adjuster",
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
       action: `review_${data.decision}`,
       details: { comment: data.comment } as never,
     });

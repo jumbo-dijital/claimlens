@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { usePersonaStore } from "@/lib/persona-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,14 +11,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency } from "@/lib/format";
 import { reviewClaim } from "@/lib/claim-actions.functions";
 
-export const Route = createFileRoute("/claims/$id/review")({
+export const Route = createFileRoute("/_authenticated/claims/$id/review")({
   component: ReviewPage,
 });
 
 function ReviewPage() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { currentPersonaId } = usePersonaStore();
   const review = useServerFn(reviewClaim);
   const [comment, setComment] = useState("");
 
@@ -62,22 +60,20 @@ function ReviewPage() {
   );
 
   const act = async (decision: "approve" | "reject" | "changes") => {
-    await review({ data: { claimId: id, personaId: currentPersonaId, decision, comment } });
+    await review({ data: { claimId: id, decision, comment } });
     toast.success(`Claim ${decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "sent back"}`);
     router.invalidate();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link to="/claims/$id" params={{ id }} className="text-xs text-muted-foreground hover:underline">
-            ← Back to claim
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold">Senior adjuster review</h1>
-          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            {claim.claim_number} · {claim.policyholder_name} <StatusBadge status={claim.status} />
-          </div>
+      <div>
+        <Link to="/claims/$id" params={{ id }} className="text-xs text-muted-foreground hover:underline">
+          ← Back to claim
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold">Senior adjuster review</h1>
+        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+          {claim.claim_number} · {claim.policyholder_name} <StatusBadge status={claim.status} />
         </div>
       </div>
 
@@ -119,12 +115,8 @@ function ReviewPage() {
           />
           <div className="flex gap-2">
             <Button onClick={() => act("approve")}>Approve</Button>
-            <Button variant="outline" onClick={() => act("changes")}>
-              Request changes
-            </Button>
-            <Button variant="destructive" onClick={() => act("reject")}>
-              Reject
-            </Button>
+            <Button variant="outline" onClick={() => act("changes")}>Request changes</Button>
+            <Button variant="destructive" onClick={() => act("reject")}>Reject</Button>
           </div>
         </CardContent>
       </Card>

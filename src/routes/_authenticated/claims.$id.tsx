@@ -1,10 +1,10 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { usePersonaStore } from "@/lib/persona-store";
+import { useMe } from "@/lib/use-me";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,7 @@ import { Sparkles, Send, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import { editLineItem, submitForApproval } from "@/lib/claim-actions.functions";
 
-export const Route = createFileRoute("/claims/$id")({
+export const Route = createFileRoute("/_authenticated/claims/$id")({
   head: () => ({ meta: [{ title: "Claim — ClaimLens" }] }),
   component: ClaimDetail,
 });
@@ -45,7 +45,7 @@ interface LineItem {
 function ClaimDetail() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { currentPersonaId } = usePersonaStore();
+  const { data: me } = useMe();
   const analyze = useServerFn(analyzeClaim);
   const submit = useServerFn(submitForApproval);
   const edit = useServerFn(editLineItem);
@@ -100,7 +100,7 @@ function ClaimDetail() {
   const runAnalysis = async () => {
     setAnalyzing(true);
     try {
-      await analyze({ data: { claimId: id, personaId: currentPersonaId } });
+      await analyze({ data: { claimId: id } });
       toast.success("AI analysis complete");
       await Promise.all([refetchClaim(), refetchAssessment(), refetchItems()]);
     } catch (e) {
@@ -111,7 +111,7 @@ function ClaimDetail() {
   };
 
   const onSubmit = async () => {
-    await submit({ data: { claimId: id, personaId: currentPersonaId } });
+    await submit({ data: { claimId: id } });
     toast.success("Submitted for senior adjuster approval");
     router.invalidate();
     refetchClaim();
@@ -130,6 +130,12 @@ function ClaimDetail() {
           </p>
         </div>
         <div className="flex gap-2">
+          {(me?.roles.includes("adjuster") || me?.roles.includes("superadmin")) &&
+            (claim.status === "submitted" || claim.status === "changes_requested") && (
+              <Button asChild variant="secondary">
+                <Link to="/claims/$id/review" params={{ id }}>Review</Link>
+              </Button>
+            )}
           <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
             {assessment ? <RefreshCw className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {analyzing ? "Analyzing…" : assessment ? "Re-run AI analysis" : "Run AI analysis"}
@@ -240,7 +246,6 @@ function ClaimDetail() {
                           if (!rationale || rationale.trim().length < 3) return;
                           await edit({
                             data: {
-                              personaId: currentPersonaId,
                               lineItemId: li.id,
                               patch: { is_deleted: true },
                               rationale,
@@ -271,7 +276,7 @@ function ClaimDetail() {
           onClose={() => setEditing(null)}
           onSave={async (patch, rationale) => {
             await edit({
-              data: { personaId: currentPersonaId, lineItemId: editing.id, patch, rationale },
+              data: { lineItemId: editing.id, patch, rationale },
             });
             setEditing(null);
             refetchItems();
