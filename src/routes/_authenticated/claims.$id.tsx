@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { usePersonaStore } from "@/lib/persona-store";
+import { useMe } from "@/lib/use-me";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +45,7 @@ interface LineItem {
 function ClaimDetail() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { currentPersonaId } = usePersonaStore();
+  const { data: me } = useMe();
   const analyze = useServerFn(analyzeClaim);
   const submit = useServerFn(submitForApproval);
   const edit = useServerFn(editLineItem);
@@ -100,7 +100,7 @@ function ClaimDetail() {
   const runAnalysis = async () => {
     setAnalyzing(true);
     try {
-      await analyze({ data: { claimId: id, personaId: currentPersonaId } });
+      await analyze({ data: { claimId: id } });
       toast.success("AI analysis complete");
       await Promise.all([refetchClaim(), refetchAssessment(), refetchItems()]);
     } catch (e) {
@@ -111,7 +111,7 @@ function ClaimDetail() {
   };
 
   const onSubmit = async () => {
-    await submit({ data: { claimId: id, personaId: currentPersonaId } });
+    await submit({ data: { claimId: id } });
     toast.success("Submitted for senior adjuster approval");
     router.invalidate();
     refetchClaim();
