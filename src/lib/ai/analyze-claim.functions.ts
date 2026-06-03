@@ -23,11 +23,14 @@ const DamageSchema = z.object({
   image_quality_issues: z.array(z.string()).default([]),
 });
 
+import { requireRole } from "@/lib/auth-roles.server";
+
 export const analyzeClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
-    z.object({ claimId: z.string().uuid(), personaId: z.string().uuid().nullable() }).parse(input),
+    z.object({ claimId: z.string().uuid() }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
