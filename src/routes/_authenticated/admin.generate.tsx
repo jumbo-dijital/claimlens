@@ -51,6 +51,9 @@ function GeneratePage() {
     setGenerating(true);
     setPreviews([]);
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
       const angles = ANGLES.slice(0, count);
       const finalImages: { url: string; angle: string }[] = [];
       for (let i = 0; i < angles.length; i++) {
@@ -58,19 +61,19 @@ function GeneratePage() {
         setPreviews((p) => [...p, { angle, url: "", final: false }]);
         const finalUrl = await streamImage(
           "/api/generate-damage-image",
-          { prompt: buildPrompt(angle), model: imgModel },
+          { prompt: buildPrompt(angle) },
           (dataUrl, isFinal) => {
             setPreviews((p) =>
               p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
             );
           },
+          { Authorization: `Bearer ${token}` },
         );
         finalImages.push({ url: finalUrl, angle });
       }
       toast.success("Images generated. Creating claim…");
       const res = await createClaim({
         data: {
-          personaId: currentPersonaId,
           policyholder_name: policyholder,
           vehicle_make: make,
           vehicle_model: model,
