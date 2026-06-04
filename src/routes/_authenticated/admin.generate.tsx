@@ -96,10 +96,27 @@ function GeneratePage() {
     setGenerating(true);
     setPreviews([]);
     try {
+      const yearNumber = Number(year);
+      const angleCount = Number(count);
+      if (
+        !policyholder.trim() ||
+        !make.trim() ||
+        !model.trim() ||
+        !Number.isInteger(yearNumber) ||
+        !vehicleClass ||
+        !severity ||
+        !imgModel ||
+        !angleCount ||
+        !paintColor.trim() ||
+        !scene.trim() ||
+        !impactArea.trim()
+      ) {
+        throw new Error("Complete the claim form before generating.");
+      }
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
-      const angles = ANGLES.slice(0, count);
+      const angles = ANGLES.slice(0, angleCount);
       const finalImages: { url: string; angle: string }[] = [];
       for (let i = 0; i < angles.length; i++) {
         const angle = angles[i];
@@ -119,17 +136,17 @@ function GeneratePage() {
       toast.success("Images generated. Creating claim…");
       const res = await createClaim({
         data: {
-          policyholder_name: policyholder,
-          vehicle_make: make,
-          vehicle_model: model,
-          vehicle_year: year,
+          policyholder_name: policyholder.trim(),
+          vehicle_make: make.trim(),
+          vehicle_model: model.trim(),
+          vehicle_year: yearNumber,
           vehicle_class: vehicleClass,
           incident_description: description,
           images: finalImages,
         },
       });
       toast.success("Claim created");
-      resetForm();
+      flushSync(() => resetForm());
       router.navigate({ to: "/claims/$id", params: { id: res.claimId } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
@@ -166,15 +183,15 @@ function GeneratePage() {
               <Input
                 type="number"
                 value={year}
-                onChange={(e) => setYear(parseInt(e.target.value) || 2020)}
+                onChange={(e) => setYear(e.target.value)}
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Vehicle class</Label>
-              <Select value={vehicleClass} onValueChange={(v) => setVehicleClass(v as "standard" | "premium")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={vehicleClass} onValueChange={(v) => setVehicleClass(v as VehicleClass)}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
@@ -183,8 +200,8 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs">Damage severity</Label>
-              <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={severity} onValueChange={(v) => setSeverity(v as DamageSeverity)}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="minor">Minor</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
@@ -197,7 +214,7 @@ function GeneratePage() {
             <div>
               <Label className="text-xs">Image model</Label>
               <Select value={imgModel} onValueChange={setImgModel}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
                   <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
@@ -207,8 +224,8 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs"># of angles</Label>
-              <Select value={String(count)} onValueChange={(v) => setCount(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={count} onValueChange={setCount}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4].map((n) => (
                     <SelectItem key={n} value={String(n)}>{n}</SelectItem>
