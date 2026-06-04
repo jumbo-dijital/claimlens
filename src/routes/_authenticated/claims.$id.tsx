@@ -629,6 +629,7 @@ function ImagePanel({
   isSuperadmin,
   onReplace,
   onUpload,
+  onDelete,
   onUpdateClaim,
 }: {
   claim: ClaimRow;
@@ -636,6 +637,7 @@ function ImagePanel({
   isSuperadmin: boolean;
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
   onUpload: (imgs: { url: string; angle: string }[]) => Promise<void>;
+  onDelete: (claimImageId: string) => Promise<void>;
   onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [generating, setGenerating] = useState(false);
@@ -643,6 +645,9 @@ function ImagePanel({
   const [genDialogOpen, setGenDialogOpen] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
   const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
+  const [lightbox, setLightbox] = useState<{ url: string; angle: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; angle: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const angleCount = claim.image_angle_count ?? 4;
   const hasUploaded = images.some((i) => i.ai_generated === false);
   const canGenerate = isSuperadmin && !hasUploaded;
