@@ -37,6 +37,11 @@ function GeneratePage() {
   const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
   const [imgModel, setImgModel] = useState("google/gemini-3.1-flash-image-preview");
   const [count, setCount] = useState(2);
+  const [paintColor, setPaintColor] = useState("metallic silver");
+  const [scene, setScene] = useState(
+    "empty asphalt parking lot, overcast midday light, low-rise retail building in background",
+  );
+  const [impactArea, setImpactArea] = useState("rear bumper and trunk lid");
   const [description, setDescription] = useState(
     "Rear-end collision in parking lot. Other driver backed into my vehicle.",
   );
@@ -44,8 +49,33 @@ function GeneratePage() {
   const [generating, setGenerating] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean }[]>([]);
 
-  const buildPrompt = (angle: string) =>
-    `Photorealistic insurance claim photograph of a ${year} ${make} ${model} (${vehicleClass} class) showing ${severity} accident damage. Camera angle: ${angle} view of the vehicle. Damage context: ${description}. Daylight, parking lot or street scene, slightly amateur smartphone photo quality, no people in frame, no text overlays, no watermarks.`;
+  const angleDescription = (angle: string) => {
+    switch (angle) {
+      case "front":
+        return "Camera positioned directly in front of the vehicle, showing the entire front fascia (hood, grille, headlights, front bumper, windshield). The front of the car is fully visible; the rear is NOT visible.";
+      case "rear":
+        return "Camera positioned directly behind the vehicle, showing the entire rear (trunk lid, tail lights, rear bumper, rear windshield, license plate). The rear of the car is fully visible; the front is NOT visible.";
+      case "driver side":
+        return "Camera positioned perpendicular to the driver-side (left) of the vehicle, showing the full left profile from front wheel to rear wheel.";
+      case "passenger side":
+        return "Camera positioned perpendicular to the passenger-side (right) of the vehicle, showing the full right profile from front wheel to rear wheel.";
+      default:
+        return `Camera angle: ${angle} view of the vehicle.`;
+    }
+  };
+
+  const buildPrompt = (angle: string) => {
+    const ia = impactArea.toLowerCase();
+    const isDamagedAngle =
+      (angle === "rear" && /rear|trunk|tail|back/.test(ia)) ||
+      (angle === "front" && /front|hood|grille|bonnet/.test(ia)) ||
+      (angle === "driver side" && /driver|left/.test(ia)) ||
+      (angle === "passenger side" && /passenger|right/.test(ia));
+    const damageClause = isDamagedAngle
+      ? `Visible ${severity} collision damage concentrated on the ${impactArea} (matching the incident: ${description}). Damage is ONLY on the ${impactArea} — every other panel is pristine and undamaged.`
+      : `This angle shows an UNDAMAGED side of the vehicle — bodywork is pristine, no dents, no scratches, no paint damage. The collision damage is on the ${impactArea} and is NOT visible from this angle.`;
+    return `Photorealistic insurance claim smartphone photograph. Subject: the SAME specific ${year} ${make} ${model} (${vehicleClass} class) sedan, painted in ${paintColor} (exact same paint tone, finish, and reflectivity in every photo of this set). Setting: ${scene} — identical location, identical lighting, identical weather, identical time of day, as if all photos were taken within 30 seconds of each other from the same spot, only the camera angle changed. ${angleDescription(angle)} ${damageClause} Slightly amateur handheld smartphone photo quality, natural perspective, no people, no other vehicles in foreground, no text overlays, no watermarks, no logos beyond factory vehicle badging.`;
+  };
 
   const runGenerate = async () => {
     setGenerating(true);
@@ -170,6 +200,22 @@ function GeneratePage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div>
+            <Label className="text-xs">Paint color</Label>
+            <Input value={paintColor} onChange={(e) => setPaintColor(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Scene / setting</Label>
+            <Input value={scene} onChange={(e) => setScene(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Impact area</Label>
+            <Input
+              value={impactArea}
+              onChange={(e) => setImpactArea(e.target.value)}
+              placeholder="e.g. rear bumper and trunk lid"
+            />
           </div>
           <div>
             <Label className="text-xs">Incident description</Label>
