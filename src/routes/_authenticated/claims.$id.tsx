@@ -44,6 +44,8 @@ import {
   updateClaim,
   deleteClaim,
   replaceClaimImages,
+  updateAssessmentSummary,
+  addLineItem,
 } from "@/lib/claim-actions.functions";
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
