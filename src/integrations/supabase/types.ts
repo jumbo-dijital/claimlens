@@ -18,6 +18,9 @@ export type Database = {
         Row: {
           claim_id: string
           created_at: string
+          feedback: string | null
+          feedback_at: string | null
+          feedback_by: string | null
           id: string
           model: string | null
           overall_confidence: number | null
@@ -28,6 +31,9 @@ export type Database = {
         Insert: {
           claim_id: string
           created_at?: string
+          feedback?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
           id?: string
           model?: string | null
           overall_confidence?: number | null
@@ -38,6 +44,9 @@ export type Database = {
         Update: {
           claim_id?: string
           created_at?: string
+          feedback?: string | null
+          feedback_at?: string | null
+          feedback_by?: string | null
           id?: string
           model?: string | null
           overall_confidence?: number | null
@@ -51,6 +60,13 @@ export type Database = {
             columns: ["claim_id"]
             isOneToOne: false
             referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assessments_feedback_by_fkey"
+            columns: ["feedback_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
