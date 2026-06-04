@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Eraser, Sparkles, Loader2 } from "lucide-react";
 import { streamImage } from "@/lib/stream-image";
 import { createSyntheticClaim } from "@/lib/claim-actions.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,27 +25,25 @@ export const Route = createFileRoute("/_authenticated/admin/generate")({
 });
 
 const ANGLES = ["front", "rear", "driver side", "passenger side"];
+type VehicleClass = "standard" | "premium";
+type DamageSeverity = "minor" | "moderate" | "severe";
 
 function GeneratePage() {
   const router = useRouter();
   const createClaim = useServerFn(createSyntheticClaim);
 
-  const [policyholder, setPolicyholder] = useState("Jordan Reyes");
-  const [make, setMake] = useState("Toyota");
-  const [model, setModel] = useState("Camry");
-  const [year, setYear] = useState(2021);
-  const [vehicleClass, setVehicleClass] = useState<"standard" | "premium">("standard");
-  const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
-  const [imgModel, setImgModel] = useState("google/gemini-3.1-flash-image-preview");
-  const [count, setCount] = useState(2);
-  const [paintColor, setPaintColor] = useState("metallic silver");
-  const [scene, setScene] = useState(
-    "empty asphalt parking lot, overcast midday light, low-rise retail building in background",
-  );
-  const [impactArea, setImpactArea] = useState("rear bumper and trunk lid");
-  const [description, setDescription] = useState(
-    "Rear-end collision in parking lot. Other driver backed into my vehicle.",
-  );
+  const [policyholder, setPolicyholder] = useState("");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [vehicleClass, setVehicleClass] = useState<VehicleClass | undefined>();
+  const [severity, setSeverity] = useState<DamageSeverity | undefined>();
+  const [imgModel, setImgModel] = useState<string | undefined>();
+  const [count, setCount] = useState<string | undefined>();
+  const [paintColor, setPaintColor] = useState("");
+  const [scene, setScene] = useState("");
+  const [impactArea, setImpactArea] = useState("");
+  const [description, setDescription] = useState("");
 
   const [generating, setGenerating] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean }[]>([]);
@@ -81,14 +80,14 @@ function GeneratePage() {
     setPolicyholder("");
     setMake("");
     setModel("");
-    setYear(2021);
-    setVehicleClass("standard");
-    setSeverity("moderate");
-    setImgModel("google/gemini-3.1-flash-image-preview");
-    setCount(2);
-    setPaintColor("metallic silver");
-    setScene("empty asphalt parking lot, overcast midday light, low-rise retail building in background");
-    setImpactArea("rear bumper and trunk lid");
+    setYear("");
+    setVehicleClass(undefined);
+    setSeverity(undefined);
+    setImgModel(undefined);
+    setCount(undefined);
+    setPaintColor("");
+    setScene("");
+    setImpactArea("");
     setDescription("");
     setPreviews([]);
   };
