@@ -77,6 +77,22 @@ function GeneratePage() {
     return `Photorealistic insurance claim smartphone photograph. Subject: the SAME specific ${year} ${make} ${model} (${vehicleClass} class) sedan, painted in ${paintColor} (exact same paint tone, finish, and reflectivity in every photo of this set). Setting: ${scene} — identical location, identical lighting, identical weather, identical time of day, as if all photos were taken within 30 seconds of each other from the same spot, only the camera angle changed. ${angleDescription(angle)} ${damageClause} Slightly amateur handheld smartphone photo quality, natural perspective, no people, no other vehicles in foreground, no text overlays, no watermarks, no logos beyond factory vehicle badging.`;
   };
 
+  const resetForm = () => {
+    setPolicyholder("");
+    setMake("");
+    setModel("");
+    setYear(2021);
+    setVehicleClass("standard");
+    setSeverity("moderate");
+    setImgModel("google/gemini-3.1-flash-image-preview");
+    setCount(2);
+    setPaintColor("metallic silver");
+    setScene("empty asphalt parking lot, overcast midday light, low-rise retail building in background");
+    setImpactArea("rear bumper and trunk lid");
+    setDescription("");
+    setPreviews([]);
+  };
+
   const runGenerate = async () => {
     setGenerating(true);
     setPreviews([]);
@@ -114,6 +130,7 @@ function GeneratePage() {
         },
       });
       toast.success("Claim created");
+      resetForm();
       router.navigate({ to: "/claims/$id", params: { id: res.claimId } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
