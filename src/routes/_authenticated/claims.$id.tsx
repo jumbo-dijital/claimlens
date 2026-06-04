@@ -171,10 +171,6 @@ function ClaimDetail() {
                 <Link to="/claims/$id/review" params={{ id }}>Review</Link>
               </Button>
             )}
-          <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
-            {assessment ? <RefreshCw className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {analyzing ? "Analyzing…" : assessment ? "Re-run AI analysis" : "Run AI analysis"}
-          </Button>
           {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
             <Button onClick={onSubmit}>
               <Send className="mr-2 h-4 w-4" />
@@ -241,11 +237,19 @@ function ClaimDetail() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">AI assessment</CardTitle>
-              {assessment?.overall_confidence != null && (
-                <span className="text-xs text-muted-foreground">
-                  Overall confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {assessment?.overall_confidence != null && (
+                  <span className="text-xs text-muted-foreground">
+                    Overall confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
+                  </span>
+                )}
+                {assessment && (
+                  <Button size="sm" variant="ghost" onClick={runAnalysis} disabled={analyzing}>
+                    <RefreshCw className={`mr-1 h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
+                    {analyzing ? "Analyzing…" : "Re-run"}
+                  </Button>
+                )}
+              </div>
             </div>
             {assessment?.summary && (
               <p className="text-sm text-muted-foreground">{assessment.summary}</p>
@@ -253,9 +257,10 @@ function ClaimDetail() {
           </CardHeader>
           <CardContent>
             {!assessment ? (
-              <p className="text-sm text-muted-foreground">
-                No assessment yet. Click "Run AI analysis" to process the photos.
-              </p>
+              <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                {analyzing ? "Analyzing…" : "Run AI analysis"}
+              </Button>
             ) : lineItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">No findings.</p>
             ) : (
