@@ -1010,6 +1010,14 @@ function AddLineItemDialog({
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Rationale (required)</Label>
+            <Textarea
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder="Why are you adding this line item?"
+            />
+          </div>
+          <div>
             <Button
               type="button"
               variant="outline"
@@ -1026,7 +1034,7 @@ function AddLineItemDialog({
           {estimate && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Part cost</Label>
+                <Label className="text-xs">Part cost ($ USD)</Label>
                 <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
               </div>
               <div>
@@ -1035,15 +1043,8 @@ function AddLineItemDialog({
               </div>
             </div>
           )}
-          <div>
-            <Label className="text-xs">Rationale (required)</Label>
-            <Textarea
-              value={rationale}
-              onChange={(e) => setRationale(e.target.value)}
-              placeholder="Why are you adding this line item?"
-            />
-          </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
