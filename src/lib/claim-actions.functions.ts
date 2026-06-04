@@ -205,6 +205,7 @@ export const deleteClaim = createServerFn({ method: "POST" })
       actor_role: "superadmin",
       action: "claim_deleted",
       details: { claim_id: data.claimId } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
