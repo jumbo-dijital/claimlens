@@ -944,3 +944,208 @@ function AddLineItemDialog({
     </Dialog>
   );
 }
+
+// ---------- Audit timeline ----------
+
+interface AuditRow {
+  id: string;
+  created_at: string;
+  action: string;
+  actor_role: string | null;
+  details: unknown;
+  profiles?: { display_name?: string } | null;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  claim_created_synthetic: "Claim created",
+  claim_updated: "Claim details edited",
+  claim_deleted: "Claim deleted",
+  claim_images_replaced: "Damage photos replaced",
+  line_item_added: "Line item added",
+  line_item_edited: "Line item edited",
+  line_item_removed: "Line item removed",
+  assessment_summary_edited: "Assessment summary edited",
+  submitted_for_approval: "Submitted for approval",
+  review_approve: "Review: approved",
+  review_reject: "Review: rejected",
+  review_changes: "Review: changes requested",
+  ai_analysis_completed: "AI analysis completed",
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  policyholder_name: "Policyholder",
+  vehicle_make: "Vehicle make",
+  vehicle_model: "Vehicle model",
+  vehicle_year: "Vehicle year",
+  vehicle_class: "Vehicle class",
+  incident_description: "Incident description",
+  paint_color: "Paint color",
+  scene: "Scene",
+  impact_area: "Impact area",
+  damage_severity: "Damage severity",
+  image_model: "Image model",
+  image_angle_count: "Image angle count",
+  suggested_repair: "Suggested repair",
+  part_cost: "Part cost",
+  labour_hours: "Labour hours",
+  labour_cost: "Labour cost",
+  severity: "Severity",
+  summary: "Summary",
+  images: "Images",
+};
+
+function formatValue(field: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field.endsWith("_cost") && typeof value === "number") return formatCurrency(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  return JSON.stringify(value);
+}
+
+function FieldDiff({
+  field,
+  from,
+  to,
+}: {
+  field: string;
+  from: unknown;
+  to: unknown;
+}) {
+  const label = FIELD_LABELS[field] ?? field;
+  const fromStr = formatValue(field, from);
+  const toStr = formatValue(field, to);
+  const isLong = fromStr.length > 80 || toStr.length > 80;
+  const [expanded, setExpanded] = useState(false);
+
+  if (field === "images" && Array.isArray(from) && Array.isArray(to)) {
+    const fromAngles = (from as Array<{ angle: string }>).map((i) => i.angle);
+    const toAngles = (to as Array<{ angle: string }>).map((i) => i.angle);
+    const added = toAngles.filter((a) => !fromAngles.includes(a));
+    const removed = fromAngles.filter((a) => !toAngles.includes(a));
+    return (
+      <div className="text-xs">
+        <span className="font-medium">{label}:</span>{" "}
+        <span className="text-muted-foreground">{from.length}</span>
+        <span className="mx-1">→</span>
+        <span>{to.length}</span>
+        {(added.length > 0 || removed.length > 0) && (
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            {added.length > 0 && <span>+ {added.join(", ")} </span>}
+            {removed.length > 0 && <span>− {removed.join(", ")}</span>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const truncate = (s: string) => (s.length > 80 ? s.slice(0, 80) + "…" : s);
+
+  return (
+    <div className="text-xs">
+      <span className="font-medium">{label}:</span>{" "}
+      <span className="text-muted-foreground line-through">
+        {expanded || !isLong ? fromStr : truncate(fromStr)}
+      </span>
+      <span className="mx-1">→</span>
+      <span>{expanded || !isLong ? toStr : truncate(toStr)}</span>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="ml-2 text-[11px] text-primary hover:underline"
+        >
+          {expanded ? "Show less" : "Show full"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AuditRowItem({ row }: { row: AuditRow }) {
+  const [showJson, setShowJson] = useState(false);
+  const details = (row.details ?? {}) as Record<string, unknown>;
+  const changes = details.changes as
+    | Record<string, { from: unknown; to: unknown }>
+    | undefined;
+  const rationale = typeof details.rationale === "string" ? details.rationale : null;
+  const comment = typeof details.comment === "string" ? details.comment : null;
+  const label = ACTION_LABELS[row.action] ?? row.action;
+
+  return (
+    <div className="grid grid-cols-[160px_1fr] gap-4 px-5 py-3 text-sm">
+      <div className="text-xs text-muted-foreground">{formatDateTime(row.created_at)}</div>
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-2">
+          <span className="font-medium">{label}</span>
+          <span className="text-xs text-muted-foreground">
+            {row.profiles?.display_name ?? "—"}
+            {row.actor_role ? ` (${row.actor_role})` : ""}
+          </span>
+        </div>
+        {changes && Object.keys(changes).length > 0 && (
+          <div className="space-y-0.5">
+            {Object.entries(changes).map(([field, diff]) => (
+              <FieldDiff key={field} field={field} from={diff.from} to={diff.to} />
+            ))}
+          </div>
+        )}
+        {rationale && (
+          <div className="text-xs italic text-muted-foreground">"{rationale}"</div>
+        )}
+        {comment && (
+          <div className="text-xs italic text-muted-foreground">"{comment}"</div>
+        )}
+        {row.details ? (
+          <button
+            type="button"
+            onClick={() => setShowJson((v) => !v)}
+            className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {showJson ? "Hide raw details" : "Show raw details"}
+          </button>
+        ) : null}
+        {showJson && (
+          <pre className="mt-1 overflow-x-auto rounded bg-muted/60 p-2 text-[11px]">
+            {JSON.stringify(row.details, null, 2)}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AuditTimeline({ claimId }: { claimId: string }) {
+  const { data: rows = [] } = useQuery({
+    queryKey: ["claim-audit", claimId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_log")
+        .select("id, created_at, action, actor_role, details, profiles:actor_user_id(display_name)")
+        .eq("claim_id", claimId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return (data ?? []) as unknown as AuditRow[];
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Activity ({rows.length})</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y divide-border">
+          {rows.map((r) => (
+            <AuditRowItem key={r.id} row={r} />
+          ))}
+          {rows.length === 0 && (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+              No activity yet.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
