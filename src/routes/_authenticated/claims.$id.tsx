@@ -786,14 +786,51 @@ function ImagePanel({
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <img
-                  src={p.url}
-                  alt={p.angle}
-                  className={
-                    "aspect-square w-full object-cover transition-[filter] duration-300 " +
-                    (p.blur ? "blur-md" : "blur-0")
-                  }
-                />
+                <div className="relative">
+                  {p.imageId ? (
+                    <button
+                      type="button"
+                      onClick={() => setLightbox({ url: p.url, angle: p.angle })}
+                      className="block w-full cursor-zoom-in"
+                      aria-label={`View ${p.angle} full size`}
+                    >
+                      <img
+                        src={p.url}
+                        alt={p.angle}
+                        className="aspect-square w-full object-cover"
+                      />
+                    </button>
+                  ) : (
+                    <img
+                      src={p.url}
+                      alt={p.angle}
+                      className={
+                        "aspect-square w-full object-cover transition-[filter] duration-300 " +
+                        (p.blur ? "blur-md" : "blur-0")
+                      }
+                    />
+                  )}
+                  {p.imageId && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute right-2 top-2 h-7 w-7 bg-background/80 backdrop-blur hover:bg-background"
+                      aria-label={`Delete ${p.angle}`}
+                      disabled={deletingId === p.imageId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ id: p.imageId!, angle: p.angle });
+                      }}
+                    >
+                      {deletingId === p.imageId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               )}
               <div className="flex items-center justify-between px-2 py-1 text-xs capitalize text-muted-foreground">
                 <span>{p.angle}</span>
