@@ -1049,6 +1049,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 const FIELD_LABELS: Record<string, string> = {
   policyholder_name: "Policyholder",
+  policy_number: "Policy number",
   vehicle_make: "Vehicle make",
   vehicle_model: "Vehicle model",
   vehicle_year: "Vehicle year",

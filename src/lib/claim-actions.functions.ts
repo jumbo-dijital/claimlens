@@ -124,6 +124,7 @@ export const updateClaim = createServerFn({ method: "POST" })
         claimId: z.string().uuid(),
         patch: z.object({
           policyholder_name: z.string().min(1).max(120).optional(),
+          policy_number: z.string().max(60).optional(),
           vehicle_make: z.string().min(1).max(60).optional(),
           vehicle_model: z.string().min(1).max(60).optional(),
           vehicle_year: z.number().int().min(1990).max(2030).optional(),
