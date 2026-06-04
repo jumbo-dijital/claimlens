@@ -261,6 +261,53 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const addClaimImages = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        images: z
+          .array(
+            z.object({
+              url: z.string().min(1).max(16_000_000),
+              angle: z.string().min(1).max(60),
+            }),
+          )
+          .min(1)
+          .max(12),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin.from("claim_images").insert(
+      data.images.map((img) => ({
+        claim_id: data.claimId,
+        url: img.url,
+        angle: img.angle,
+        prompt: null,
+        ai_generated: false,
+      })),
+    );
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: data.claimId,
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin")
+        ? "superadmin"
+        : context.roles.includes("adjuster")
+          ? "adjuster"
+          : "agent",
+      action: "claim_images_uploaded",
+      details: {
+        image_count: data.images.length,
+        angles: data.images.map((i) => i.angle),
+      } as never,
+      ...getRequestAuditContext(),
+    });
+    return { ok: true };
+  });
+
 export const editLineItem = createServerFn({ method: "POST" })
   .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((i: unknown) =>

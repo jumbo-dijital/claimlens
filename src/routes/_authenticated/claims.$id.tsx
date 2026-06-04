@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -44,6 +44,7 @@ import {
   updateClaim,
   deleteClaim,
   replaceClaimImages,
+  addClaimImages,
   updateAssessmentSummary,
   addLineItem,
   setAssessmentFeedback,
@@ -88,6 +89,7 @@ function ClaimDetail() {
   const update = useServerFn(updateClaim);
   const del = useServerFn(deleteClaim);
   const replaceImages = useServerFn(replaceClaimImages);
+  const addImages = useServerFn(addClaimImages);
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
@@ -219,8 +221,14 @@ function ClaimDetail() {
             <ImagePanel
               claim={claim}
               images={images}
+              isSuperadmin={isSuperadmin}
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
+                await refetchImages();
+                refreshActivity();
+              }}
+              onUpload={async (imgs) => {
+                await addImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
                 refreshActivity();
               }}
@@ -594,69 +602,43 @@ interface ClaimImageRow {
   url: string;
   angle: string;
   prompt: string | null;
+  ai_generated: boolean;
+}
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("Could not read file"));
+    r.onload = () => resolve(String(r.result));
+    r.readAsDataURL(file);
+  });
 }
 
 function ImagePanel({
   claim,
   images,
+  isSuperadmin,
   onReplace,
+  onUpload,
   onUpdateClaim,
 }: {
   claim: ClaimRow;
   images: ClaimImageRow[];
+  isSuperadmin: boolean;
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
+  onUpload: (imgs: { url: string; angle: string }[]) => Promise<void>;
   onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [genDialogOpen, setGenDialogOpen] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
   const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
-  const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
   const angleCount = claim.image_angle_count ?? 4;
-
-  const renderGenControls = (action: ReactNode) => (
-    <div className="flex flex-wrap items-end gap-2">
-      <div className="min-w-[200px] flex-1">
-        <Label className="text-xs">Scene / setting</Label>
-        <Input
-          value={claim.scene ?? ""}
-          onChange={(e) => onUpdateClaim({ scene: e.target.value })}
-          disabled={generating}
-          placeholder="e.g. suburban driveway, sunny afternoon"
-        />
-      </div>
-      <div className="min-w-[200px] flex-1">
-        <Label className="text-xs">Image model</Label>
-        <Select
-          value={imageModel}
-          onValueChange={(v) => onUpdateClaim({ image_model: v })}
-          disabled={generating}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
-            <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
-            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="w-24">
-        <Label className="text-xs"># of angles</Label>
-        <Select
-          value={String(angleCount)}
-          onValueChange={(v) => onUpdateClaim({ image_angle_count: Number(v) })}
-          disabled={generating}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {[1, 2, 3, 4].map((n) => (
-              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="shrink-0">{action}</div>
-    </div>
-  );
+  const hasUploaded = images.some((i) => i.ai_generated === false);
+  const canGenerate = isSuperadmin && !hasUploaded;
 
   const run = async () => {
     if (!claim.paint_color || !claim.scene || !claim.impact_area) {
@@ -664,19 +646,20 @@ function ImagePanel({
       return;
     }
     setGenerating(true);
-    setPreviews([]);
+    const angles = ANGLES.slice(0, angleCount);
+    // Seed all placeholder tiles up-front so the user sees n loading boxes immediately.
+    setPreviews(
+      angles.map((angle) => ({ angle, url: "", final: false, prompt: buildDamagePrompt(angle, claim) })),
+    );
     try {
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
 
-      const angleCount = claim.image_angle_count ?? 4;
-      const angles = ANGLES.slice(0, angleCount);
       const finals: { url: string; angle: string; prompt: string }[] = [];
       for (let i = 0; i < angles.length; i++) {
         const angle = angles[i];
         const prompt = buildDamagePrompt(angle, claim);
-        setPreviews((p) => [...p, { angle, url: "", final: false, prompt }]);
         const finalUrl = await streamImage(
           "/api/generate-damage-image",
           { prompt, model: claim.image_model ?? "google/gemini-3.1-flash-image-preview" },
@@ -694,8 +677,38 @@ function ImagePanel({
       toast.success("Images saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Image generation failed");
+      setPreviews([]);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const selected = Array.from(files).slice(0, 12);
+    setUploading(true);
+    try {
+      const payload: { url: string; angle: string }[] = [];
+      for (const f of selected) {
+        if (!f.type.startsWith("image/")) {
+          toast.error(`Skipped ${f.name}: not an image`);
+          continue;
+        }
+        if (f.size > MAX_UPLOAD_BYTES) {
+          toast.error(`Skipped ${f.name}: over 10 MB`);
+          continue;
+        }
+        const url = await readFileAsDataUrl(f);
+        const baseName = f.name.replace(/\.[^.]+$/, "").slice(0, 50) || "uploaded";
+        payload.push({ url, angle: baseName });
+      }
+      if (payload.length === 0) return;
+      await onUpload(payload);
+      toast.success(`Uploaded ${payload.length} photo${payload.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -718,77 +731,185 @@ function ImagePanel({
         blur: false,
       }));
 
+  const uploadInputId = `upload-${claim.id}`;
+
+  const uploadButton = (
+    <>
+      <input
+        id={uploadInputId}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <Button
+        asChild
+        disabled={uploading || generating}
+      >
+        <label htmlFor={uploadInputId} className="cursor-pointer">
+          {uploading ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…</>
+          ) : (
+            <><Upload className="mr-2 h-4 w-4" /> Upload photos</>
+          )}
+        </label>
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-3">
-      {list.length === 0 && !generating ? (
-        <div className="py-4">
-          {renderGenControls(
-            <Button
-              size="lg"
-              onClick={run}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              <Sparkles className="mr-2 h-5 w-5" /> Generate images
-            </Button>,
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3">
-            {list.map((p) => (
-              <div key={p.key} className="overflow-hidden rounded-md border border-border">
-                {p.loading ? (
-                  <div className="grid aspect-square w-full place-items-center bg-muted">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <img
-                    src={p.url}
-                    alt={p.angle}
-                    className={
-                      "aspect-square w-full object-cover transition-[filter] duration-300 " +
-                      (p.blur ? "blur-md" : "blur-0")
-                    }
-                  />
-                )}
-                <div className="flex items-center justify-between px-2 py-1 text-xs capitalize text-muted-foreground">
-                  <span>{p.angle}</span>
-                  {p.prompt && (
-                    <button
-                      type="button"
-                      className="text-[10px] uppercase tracking-wide underline-offset-2 hover:underline"
-                      onClick={() => setShownPrompt((s) => ({ ...s, [p.key]: !s[p.key] }))}
-                    >
-                      {shownPrompt[p.key] ? "Hide prompt" : "Show prompt"}
-                    </button>
-                  )}
+      {list.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {list.map((p) => (
+            <div key={p.key} className="overflow-hidden rounded-md border border-border">
+              {p.loading ? (
+                <div className="grid aspect-square w-full place-items-center bg-muted">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-                {shownPrompt[p.key] && p.prompt && (
-                  <div className="border-t border-border bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
-                    {p.prompt}
-                  </div>
+              ) : (
+                <img
+                  src={p.url}
+                  alt={p.angle}
+                  className={
+                    "aspect-square w-full object-cover transition-[filter] duration-300 " +
+                    (p.blur ? "blur-md" : "blur-0")
+                  }
+                />
+              )}
+              <div className="flex items-center justify-between px-2 py-1 text-xs capitalize text-muted-foreground">
+                <span>{p.angle}</span>
+                {p.prompt && (
+                  <button
+                    type="button"
+                    className="text-[10px] uppercase tracking-wide underline-offset-2 hover:underline"
+                    onClick={() => setShownPrompt((s) => ({ ...s, [p.key]: !s[p.key] }))}
+                  >
+                    {shownPrompt[p.key] ? "Hide prompt" : "Show prompt"}
+                  </button>
                 )}
               </div>
-            ))}
-          </div>
-          {!live && (
-            <div className="pt-2">
-              {renderGenControls(
-                <Button variant="outline" onClick={run} disabled={generating}>
-                {generating ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
-                ) : (
-                  <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
-                )}
-                </Button>,
+              {shownPrompt[p.key] && p.prompt && (
+                <div className="border-t border-border bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                  {p.prompt}
+                </div>
               )}
             </div>
+          ))}
+        </div>
+      )}
+      {!live && (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {uploadButton}
+          {canGenerate && images.length === 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setGenDialogOpen(true)}
+              disabled={generating}
+            >
+              <Sparkles className="mr-2 h-4 w-4" /> Generate images
+            </Button>
           )}
-        </>
+          {canGenerate && images.length > 0 && (
+            <Button variant="outline" onClick={() => setGenDialogOpen(true)} disabled={generating}>
+              {generating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
+              ) : (
+                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+      {canGenerate && (
+        <GenerateImagesDialog
+          open={genDialogOpen}
+          onOpenChange={setGenDialogOpen}
+          claim={claim}
+          onUpdateClaim={onUpdateClaim}
+          onGenerate={() => {
+            setGenDialogOpen(false);
+            void run();
+          }}
+        />
       )}
     </div>
   );
 }
+
+function GenerateImagesDialog({
+  open,
+  onOpenChange,
+  claim,
+  onUpdateClaim,
+  onGenerate,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  claim: ClaimRow;
+  onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
+  onGenerate: () => void;
+}) {
+  const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
+  const angleCount = claim.image_angle_count ?? 4;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Generate damage images</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Scene / setting</Label>
+            <Textarea
+              value={claim.scene ?? ""}
+              onChange={(e) => onUpdateClaim({ scene: e.target.value })}
+              placeholder="e.g. suburban driveway, sunny afternoon"
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Image model</Label>
+            <Select value={imageModel} onValueChange={(v) => onUpdateClaim({ image_model: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
+                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
+                <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs"># of angles</Label>
+            <Select
+              value={String(angleCount)}
+              onValueChange={(v) => onUpdateClaim({ image_angle_count: Number(v) })}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={onGenerate}>
+            <Sparkles className="mr-2 h-4 w-4" /> Generate
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 
 function EditDialog({
   item,
