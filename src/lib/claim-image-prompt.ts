@@ -11,6 +11,12 @@ export interface PromptClaim {
 }
 
 export function buildDamagePrompt(angle: string, claim: PromptClaim): string {
+  // IMPORTANT: "left" and "right" are defined from the perspective of an occupant
+  // sitting inside the vehicle facing forward (the driving direction). This is the
+  // automotive industry convention. The viewer's left/right when looking at the
+  // front of the car is the OPPOSITE of the vehicle's left/right — do not confuse
+  // the two. We give the model explicit landmarks (where the front of the car
+  // points in the frame) so the two side photos cannot be mirrored duplicates.
   const angleDesc = (() => {
     switch (angle) {
       case "front":
@@ -18,9 +24,9 @@ export function buildDamagePrompt(angle: string, claim: PromptClaim): string {
       case "rear":
         return "Camera positioned directly behind the vehicle, showing the entire rear (trunk lid, tail lights, rear bumper, rear windshield, license plate). The rear of the car is fully visible; the front is NOT visible.";
       case "left side":
-        return "Camera positioned perpendicular to the LEFT side of the vehicle (the side on the viewer's left when looking at the front of the car), showing the full left profile from front wheel to rear wheel.";
+        return "Side profile shot of the vehicle's LEFT side (the side where the driver sits in a left-hand-drive car — i.e. the side an occupant facing forward calls 'left'). Camera is perpendicular to that side. CRITICAL: the front of the car (hood, grille, headlights) must point toward the RIGHT edge of the photo, and the rear (trunk, tail lights) must point toward the LEFT edge of the photo. Show the full left profile from front wheel to rear wheel. Do NOT show the right side of the vehicle, and do NOT horizontally mirror a right-side photo.";
       case "right side":
-        return "Camera positioned perpendicular to the RIGHT side of the vehicle (the side on the viewer's right when looking at the front of the car), showing the full right profile from front wheel to rear wheel.";
+        return "Side profile shot of the vehicle's RIGHT side (the side opposite the driver in a left-hand-drive car — i.e. the side an occupant facing forward calls 'right'). Camera is perpendicular to that side. CRITICAL: the front of the car (hood, grille, headlights) must point toward the LEFT edge of the photo, and the rear (trunk, tail lights) must point toward the RIGHT edge of the photo. Show the full right profile from front wheel to rear wheel. Do NOT show the left side of the vehicle, and do NOT horizontally mirror a left-side photo.";
       default:
         return `Camera angle: ${angle} view of the vehicle.`;
     }
@@ -35,7 +41,7 @@ export function buildDamagePrompt(angle: string, claim: PromptClaim): string {
 
   const damageClause = isDamagedAngle
     ? `Visible ${claim.damage_severity ?? "moderate"} collision damage concentrated on the ${claim.impact_area} (matching the incident: ${claim.incident_description ?? ""}). Damage is ONLY on the ${claim.impact_area} — every other panel is pristine and undamaged.`
-    : `This angle shows an UNDAMAGED side of the vehicle — bodywork is pristine, no dents, no scratches, no paint damage. The collision damage is on the ${claim.impact_area} and is NOT visible from this angle.`;
+    : `This angle shows an UNDAMAGED side of the vehicle — bodywork is pristine, no dents, no scratches, no paint damage. The collision damage is on the ${claim.impact_area} (the opposite physical side / area of the car) and is NOT visible from this angle.`;
 
   return `Photorealistic insurance claim smartphone photograph. Subject: the SAME specific ${claim.vehicle_year} ${claim.vehicle_make} ${claim.vehicle_model} (${claim.vehicle_class ?? "standard"} class) sedan, painted in ${claim.paint_color} (exact same paint tone, finish, and reflectivity in every photo of this set). Setting: ${claim.scene} — identical location, identical lighting, identical weather, identical time of day, as if all photos were taken within 30 seconds of each other from the same spot, only the camera angle changed. ${angleDesc} ${damageClause} Slightly amateur handheld smartphone photo quality, natural perspective, no people, no other vehicles in foreground, no text overlays, no watermarks, no logos beyond factory vehicle badging.`;
 }
