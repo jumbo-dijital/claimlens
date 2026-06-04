@@ -237,11 +237,19 @@ function ClaimDetail() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">AI assessment</CardTitle>
-              {assessment?.overall_confidence != null && (
-                <span className="text-xs text-muted-foreground">
-                  Overall confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {assessment?.overall_confidence != null && (
+                  <span className="text-xs text-muted-foreground">
+                    Overall confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
+                  </span>
+                )}
+                {assessment && (
+                  <Button size="sm" variant="ghost" onClick={runAnalysis} disabled={analyzing}>
+                    <RefreshCw className={`mr-1 h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
+                    {analyzing ? "Analyzing…" : "Re-run"}
+                  </Button>
+                )}
+              </div>
             </div>
             {assessment?.summary && (
               <p className="text-sm text-muted-foreground">{assessment.summary}</p>
