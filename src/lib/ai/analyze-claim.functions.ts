@@ -227,6 +227,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
         overall_confidence: aiOutput.overall_confidence,
         image_quality_issues: aiOutput.image_quality_issues,
       } as never,
+      ...getRequestAuditContext(),
     });
 
     return { assessmentId: assessment.id, findings: aiOutput.findings.length };
