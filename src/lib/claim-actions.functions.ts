@@ -94,7 +94,7 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
   });
 
 export const updateClaim = createServerFn({ method: "POST" })
-  .middleware([requireRole("superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -125,7 +125,7 @@ export const updateClaim = createServerFn({ method: "POST" })
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
       actor_user_id: context.userId,
-      actor_role: "superadmin",
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
       details: { patch: data.patch } as never,
     });
@@ -168,7 +168,7 @@ export const deleteClaim = createServerFn({ method: "POST" })
   });
 
 export const replaceClaimImages = createServerFn({ method: "POST" })
-  .middleware([requireRole("superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -201,7 +201,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
       actor_user_id: context.userId,
-      actor_role: "superadmin",
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_images_replaced",
       details: { image_count: data.images.length } as never,
     });
@@ -209,7 +209,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
   });
 
 export const editLineItem = createServerFn({ method: "POST" })
-  .middleware([requireRole("agent", "superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((i: unknown) =>
     z
       .object({
@@ -249,7 +249,7 @@ export const editLineItem = createServerFn({ method: "POST" })
       await supabaseAdmin.from("audit_log").insert({
         claim_id: claimId,
         actor_user_id: context.userId,
-        actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
+        actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
         action: data.patch.is_deleted ? "line_item_removed" : "line_item_edited",
         details: { line_item_id: data.lineItemId, patch: data.patch, rationale: data.rationale } as never,
       });
@@ -309,5 +309,95 @@ export const reviewClaim = createServerFn({ method: "POST" })
       action: `review_${data.decision}`,
       details: { comment: data.comment } as never,
     });
+    return { ok: true };
+  });
+
+export const updateAssessmentSummary = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        assessmentId: z.string().uuid(),
+        summary: z.string().max(4000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: a } = await supabaseAdmin
+      .from("ai_assessments")
+      .select("claim_id")
+      .eq("id", data.assessmentId)
+      .single();
+    const { error } = await supabaseAdmin
+      .from("ai_assessments")
+      .update({ summary: data.summary })
+      .eq("id", data.assessmentId);
+    if (error) throw new Error(error.message);
+    if (a?.claim_id) {
+      await supabaseAdmin.from("audit_log").insert({
+        claim_id: a.claim_id,
+        actor_user_id: context.userId,
+        actor_role: context.roles.includes("superadmin")
+          ? "superadmin"
+          : context.roles.includes("adjuster")
+            ? "adjuster"
+            : "agent",
+        action: "assessment_summary_edited",
+        details: { summary: data.summary } as never,
+      });
+    }
+    return { ok: true };
+  });
+
+export const addLineItem = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        assessmentId: z.string().uuid(),
+        fields: z.object({
+          damage_type: z.string().min(1).max(80),
+          location: z.string().min(1).max(120),
+          severity: z.enum(["minor", "moderate", "severe"]),
+          suggested_repair: z.string().min(1).max(300),
+          part_cost: z.number().min(0).max(1_000_000),
+          labour_hours: z.number().min(0).max(500),
+          labour_cost: z.number().min(0).max(1_000_000),
+        }),
+        rationale: z.string().min(3).max(1000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: a } = await supabaseAdmin
+      .from("ai_assessments")
+      .select("claim_id")
+      .eq("id", data.assessmentId)
+      .single();
+    const { data: inserted, error } = await supabaseAdmin
+      .from("assessment_line_items")
+      .insert({
+        assessment_id: data.assessmentId,
+        ...data.fields,
+        source: "agent",
+        edited_by: context.userId,
+        rationale: data.rationale,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    if (a?.claim_id) {
+      await supabaseAdmin.from("audit_log").insert({
+        claim_id: a.claim_id,
+        actor_user_id: context.userId,
+        actor_role: context.roles.includes("superadmin")
+          ? "superadmin"
+          : context.roles.includes("adjuster")
+            ? "adjuster"
+            : "agent",
+        action: "line_item_added",
+        details: { line_item_id: inserted?.id, fields: data.fields, rationale: data.rationale } as never,
+      });
+    }
     return { ok: true };
   });

@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2 } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -44,6 +44,8 @@ import {
   updateClaim,
   deleteClaim,
   replaceClaimImages,
+  updateAssessmentSummary,
+  addLineItem,
 } from "@/lib/claim-actions.functions";
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
@@ -83,8 +85,11 @@ function ClaimDetail() {
   const update = useServerFn(updateClaim);
   const del = useServerFn(deleteClaim);
   const replaceImages = useServerFn(replaceClaimImages);
+  const updateSummary = useServerFn(updateAssessmentSummary);
+  const addItem = useServerFn(addLineItem);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const { data: claim, refetch: refetchClaim } = useQuery({
     queryKey: ["claim", id],
@@ -180,21 +185,20 @@ function ClaimDetail() {
         </div>
       </div>
 
-      {isSuperadmin && (
-        <ClaimEditCard
-          claim={claim}
-          onSave={async (patch) => {
-            await update({ data: { claimId: id, patch } });
-            await refetchClaim();
-            toast.success("Claim updated");
-          }}
-          onDelete={async () => {
-            await del({ data: { claimId: id } });
-            toast.success("Claim deleted");
-            router.navigate({ to: "/" });
-          }}
-        />
-      )}
+      <ClaimEditCard
+        claim={claim}
+        canDelete={isSuperadmin}
+        onSave={async (patch) => {
+          await update({ data: { claimId: id, patch } });
+          await refetchClaim();
+          toast.success("Claim updated");
+        }}
+        onDelete={async () => {
+          await del({ data: { claimId: id } });
+          toast.success("Claim deleted");
+          router.navigate({ to: "/" });
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card>
@@ -202,28 +206,14 @@ function ClaimDetail() {
             <CardTitle className="text-base">Damage photos ({images.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {isSuperadmin ? (
-              <ImagePanel
-                claim={claim}
-                images={images}
-                onReplace={async (imgs) => {
-                  await replaceImages({ data: { claimId: id, images: imgs } });
-                  await refetchImages();
-                }}
-              />
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {images.map((img) => (
-                  <div key={img.id} className="overflow-hidden rounded-md border border-border">
-                    <img src={img.url} alt={img.angle} className="aspect-square w-full object-cover" />
-                    <div className="px-2 py-1 text-xs capitalize text-muted-foreground">{img.angle}</div>
-                  </div>
-                ))}
-                {images.length === 0 && (
-                  <p className="col-span-2 text-sm text-muted-foreground">No images attached.</p>
-                )}
-              </div>
-            )}
+            <ImagePanel
+              claim={claim}
+              images={images}
+              onReplace={async (imgs) => {
+                await replaceImages({ data: { claimId: id, images: imgs } });
+                await refetchImages();
+              }}
+            />
             {claim.incident_description && (
               <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Policyholder note</div>
@@ -236,7 +226,7 @@ function ClaimDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">AI assessment</CardTitle>
+              <CardTitle className="text-base">Claim assessment</CardTitle>
               <div className="flex items-center gap-2">
                 {assessment?.overall_confidence != null && (
                   <span className="text-xs text-muted-foreground">
@@ -251,8 +241,16 @@ function ClaimDetail() {
                 )}
               </div>
             </div>
-            {assessment?.summary && (
-              <p className="text-sm text-muted-foreground">{assessment.summary}</p>
+            {assessment && (
+              <SummaryEditor
+                key={assessment.id}
+                initial={assessment.summary ?? ""}
+                onSave={async (summary) => {
+                  await updateSummary({ data: { assessmentId: assessment.id, summary } });
+                  await refetchAssessment();
+                  toast.success("Summary updated");
+                }}
+              />
             )}
           </CardHeader>
           <CardContent>
@@ -261,10 +259,11 @@ function ClaimDetail() {
                 <Sparkles className="mr-2 h-4 w-4" />
                 {analyzing ? "Analyzing…" : "Run AI analysis"}
               </Button>
-            ) : lineItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No findings.</p>
             ) : (
               <div className="space-y-2">
+                {lineItems.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No findings yet.</p>
+                )}
                 {lineItems.map((li) => (
                   <div
                     key={li.id}
@@ -327,9 +326,14 @@ function ClaimDetail() {
                     </div>
                   </div>
                 ))}
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-sm font-medium">Estimated total</span>
-                  <span className="text-lg font-semibold">{formatCurrency(total)}</span>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+                    <Plus className="mr-1 h-4 w-4" /> Add line item
+                  </Button>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Estimated total</div>
+                    <div className="text-lg font-semibold">{formatCurrency(total)}</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -348,6 +352,17 @@ function ClaimDetail() {
             setEditing(null);
             refetchItems();
             toast.success("Line item updated");
+          }}
+        />
+      )}
+      {adding && assessment && (
+        <AddLineItemDialog
+          onClose={() => setAdding(false)}
+          onSave={async (fields, rationale) => {
+            await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
+            setAdding(false);
+            refetchItems();
+            toast.success("Line item added");
           }}
         />
       )}
@@ -373,10 +388,12 @@ interface ClaimRow {
 
 function ClaimEditCard({
   claim,
+  canDelete,
   onSave,
   onDelete,
 }: {
   claim: ClaimRow;
+  canDelete: boolean;
   onSave: (patch: Record<string, unknown>) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -515,9 +532,11 @@ function ClaimEditCard({
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
           </Button>
-          <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
+          {canDelete && (
+            <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          )}
         </div>
         <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <AlertDialogContent>
@@ -759,6 +778,164 @@ function EditDialog({
             }}
           >
             Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SummaryEditor({
+  initial,
+  onSave,
+}: {
+  initial: string;
+  onSave: (summary: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const dirty = value !== initial;
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={3}
+        placeholder="Assessment summary…"
+        className="text-sm"
+      />
+      {dirty && (
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setValue(initial)} disabled={saving}>
+            Reset
+          </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(value);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+            Save summary
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface NewLineItemFields {
+  damage_type: string;
+  location: string;
+  severity: "minor" | "moderate" | "severe";
+  suggested_repair: string;
+  part_cost: number;
+  labour_hours: number;
+  labour_cost: number;
+}
+
+function AddLineItemDialog({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (fields: NewLineItemFields, rationale: string) => void;
+}) {
+  const [repair, setRepair] = useState("");
+  const [damageType, setDamageType] = useState("");
+  const [location, setLocation] = useState("");
+  const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
+  const [partCost, setPartCost] = useState("0");
+  const [hours, setHours] = useState("0");
+  const [rationale, setRationale] = useState("");
+
+  const valid =
+    repair.trim().length > 0 &&
+    damageType.trim().length > 0 &&
+    location.trim().length > 0 &&
+    rationale.trim().length >= 3;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add line item</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Repair description</Label>
+            <Input value={repair} onChange={(e) => setRepair(e.target.value)} placeholder="e.g. Replace front bumper" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Damage type</Label>
+              <Input value={damageType} onChange={(e) => setDamageType(e.target.value)} placeholder="dent, scratch, crack…" />
+            </div>
+            <div>
+              <Label className="text-xs">Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="front bumper" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">Severity</Label>
+              <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minor">Minor</SelectItem>
+                  <SelectItem value="moderate">Moderate</SelectItem>
+                  <SelectItem value="severe">Severe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Part cost</Label>
+              <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Labour hours</Label>
+              <Input value={hours} onChange={(e) => setHours(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Rationale (required)</Label>
+            <Textarea
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder="Why are you adding this line item?"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={!valid}
+            onClick={() => {
+              const hoursNum = parseFloat(hours) || 0;
+              const partNum = parseFloat(partCost) || 0;
+              onSave(
+                {
+                  damage_type: damageType.trim(),
+                  location: location.trim(),
+                  severity,
+                  suggested_repair: repair.trim(),
+                  part_cost: partNum,
+                  labour_hours: hoursNum,
+                  labour_cost: hoursNum * 95,
+                },
+                rationale,
+              );
+            }}
+          >
+            Add line item
           </Button>
         </DialogFooter>
       </DialogContent>
