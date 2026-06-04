@@ -994,6 +994,7 @@ interface AuditRow {
   created_at: string;
   action: string;
   actor_role: string | null;
+  actor_user_id: string | null;
   details: unknown;
   profiles?: { display_name?: string } | null;
 }
@@ -1161,13 +1162,33 @@ function AuditTimeline({ claimId }: { claimId: string }) {
   const { data: rows = [] } = useQuery({
     queryKey: ["claim-audit", claimId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("audit_log")
-        .select("id, created_at, action, actor_role, details, profiles:actor_user_id(display_name)")
+        .select("id, created_at, action, actor_role, actor_user_id, details")
         .eq("claim_id", claimId)
         .order("created_at", { ascending: false })
         .limit(100);
-      return (data ?? []) as unknown as AuditRow[];
+      if (error) throw new Error(error.message);
+
+      const auditRows = (data ?? []) as AuditRow[];
+      const actorIds = Array.from(
+        new Set(auditRows.map((row) => row.actor_user_id).filter(Boolean) as string[]),
+      );
+
+      if (actorIds.length === 0) return auditRows;
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", actorIds);
+      const profileById = new Map(
+        (profiles ?? []).map((profile) => [profile.id, { display_name: profile.display_name ?? undefined }]),
+      );
+
+      return auditRows.map((row) => ({
+        ...row,
+        profiles: row.actor_user_id ? (profileById.get(row.actor_user_id) ?? null) : null,
+      }));
     },
   });
 
