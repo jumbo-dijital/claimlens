@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus, ThumbsUp, ThumbsDown } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -46,7 +46,9 @@ import {
   replaceClaimImages,
   updateAssessmentSummary,
   addLineItem,
+  setAssessmentFeedback,
 } from "@/lib/claim-actions.functions";
+
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
 
@@ -87,6 +89,7 @@ function ClaimDetail() {
   const replaceImages = useServerFn(replaceClaimImages);
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
+  const setFeedback = useServerFn(setAssessmentFeedback);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
   const [adding, setAdding] = useState(false);
@@ -230,14 +233,40 @@ function ClaimDetail() {
               <div className="flex items-center gap-2">
                 {assessment?.overall_confidence != null && (
                   <span className="text-xs text-muted-foreground">
-                    Overall confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
+                    Initial AI assessment confidence {(Number(assessment.overall_confidence) * 100).toFixed(0)}%
                   </span>
                 )}
                 {assessment && (
-                  <Button size="sm" variant="ghost" onClick={runAnalysis} disabled={analyzing}>
-                    <RefreshCw className={`mr-1 h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
-                    {analyzing ? "Analyzing…" : "Re-run"}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant={(assessment as { feedback?: string | null }).feedback === "up" ? "default" : "ghost"}
+                      className="h-7 w-7"
+                      aria-label="Thumbs up on initial AI assessment"
+                      onClick={async () => {
+                        const current = (assessment as { feedback?: string | null }).feedback ?? null;
+                        const next = current === "up" ? null : "up";
+                        await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
+                        await refetchAssessment();
+                      }}
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant={(assessment as { feedback?: string | null }).feedback === "down" ? "default" : "ghost"}
+                      className="h-7 w-7"
+                      aria-label="Thumbs down on initial AI assessment"
+                      onClick={async () => {
+                        const current = (assessment as { feedback?: string | null }).feedback ?? null;
+                        const next = current === "down" ? null : "down";
+                        await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
+                        await refetchAssessment();
+                      }}
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
