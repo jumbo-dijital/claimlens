@@ -249,7 +249,7 @@ export const editLineItem = createServerFn({ method: "POST" })
       await supabaseAdmin.from("audit_log").insert({
         claim_id: claimId,
         actor_user_id: context.userId,
-        actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
+        actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
         action: data.patch.is_deleted ? "line_item_removed" : "line_item_edited",
         details: { line_item_id: data.lineItemId, patch: data.patch, rationale: data.rationale } as never,
       });
