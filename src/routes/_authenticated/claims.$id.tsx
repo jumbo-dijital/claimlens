@@ -728,6 +728,7 @@ function ImagePanel({
   const list = live
     ? previews.map((p, i) => ({
         key: `live-${i}`,
+        imageId: null as string | null,
         url: p.url,
         angle: p.angle,
         prompt: p.prompt,
@@ -736,6 +737,7 @@ function ImagePanel({
       }))
     : images.map((img) => ({
         key: img.id,
+        imageId: img.id,
         url: img.url,
         angle: img.angle,
         prompt: img.prompt ?? "",
