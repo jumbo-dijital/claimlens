@@ -90,6 +90,9 @@ function ClaimDetail() {
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
+  const queryClient = useQueryClient();
+  const refreshActivity = () =>
+    queryClient.invalidateQueries({ queryKey: ["claim-audit", id] });
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
   const [adding, setAdding] = useState(false);
