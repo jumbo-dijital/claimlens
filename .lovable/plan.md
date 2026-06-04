@@ -1,22 +1,30 @@
-## Move image model and angle count controls next to the generate button
+## Add "Look up estimate" button to Add line item dialog
 
-### Problem
-The **Image model** and **# of angles** dropdowns currently live in the claim edit form at the top of the page. They only affect image generation, so they should appear beside the **Generate images** / **Regenerate** button inside the Damage photos card.
+### Goal
+In the Add line item modal, hide the part cost and labour hours fields until the user clicks a **"Look up estimate"** button. The button asks AI to estimate both values based on the entered repair description, damage type, location, and severity. After the estimate returns, the two fields appear (pre-filled, still editable) so the user can adjust before saving.
 
 ### Changes
 
-1. **Remove the two dropdowns from the claim edit form**
-   - File: `src/routes/_authenticated/claims.$id.tsx`
-   - Delete the `<div>` blocks for `Image model` (line ~518) and `# of angles` (line ~529) from the `ClaimEditForm` grid.
-   - Remove `image_model` and `image_angle_count` from the form state/setters if they are no longer used elsewhere in the edit form.
+1. **New server function** `estimateLineItemCost` in `src/lib/claim-actions.functions.ts`:
+   - Input (Zod-validated): `claimId`, `suggested_repair`, `damage_type`, `location`, `severity`.
+   - Auth: `requireRole("agent", "adjuster", "superadmin")`.
+   - Handler:
+     - Load the claim (for `vehicle_year/make/model/class`).
+     - Load `repair_catalog` rows for the claim's `vehicle_class` and include them in the prompt as reference pricing.
+     - Call Lovable AI via `createLovableAiGatewayProvider` + `generateText` with `google/gemini-3-flash-preview`, asking for strict JSON: `{ "part_cost": number, "labour_hours": number, "rationale": string }`.
+     - Parse JSON, clamp to sensible ranges (`part_cost >= 0`, `0.1 <= labour_hours <= 40`).
+     - Return `{ part_cost, labour_hours, rationale }`.
+   - Surface 429/402 errors with friendly messages, matching the pattern in `analyze-claim.functions.ts`.
 
-2. **Add the controls to `ImagePanel`**
-   - File: `src/routes/_authenticated/claims.$id.tsx`
-   - Pass the current `image_model` and `image_angle_count` values into `ImagePanel` (it already receives `claim`).
-   - In `ImagePanel`, render the two dropdowns horizontally (or stacked) directly above the **Generate images** button (when no images exist) or beside/above the **Regenerate** button (when images exist).
-   - On change, write the new value back to the claim via `updateClaim` so the selection persists for the next generation.
+2. **Update `AddLineItemDialog`** in `src/routes/_authenticated/claims.$id.tsx`:
+   - Accept `claimId` as a new prop and pass it from the parent call site.
+   - Remove `partCost` / `hours` state initialization to `"0"`; instead track `estimate: { part_cost: number; labour_hours: number } | null` initialized to `null`.
+   - Add an `estimating` state and a **"Look up estimate"** button placed where the part cost / labour hours row currently sits.
+   - Button disabled until `repair`, `damageType`, `location` are non-empty (and while `estimating`).
+   - On click: call the new server fn via `useServerFn`; on success, set the estimate state, populate `partCost` and `hours` inputs, and toast the rationale; on failure, toast the error.
+   - Only render the Part cost and Labour hours inputs after `estimate !== null`. Once shown, allow the user to edit them or click the button again to re-estimate.
+   - Update `valid` to also require `estimate !== null` so the user can't save without looking up an estimate.
 
-3. **Update labels map**
-   - Remove `image_model` and `image_angle_count` from the audit-log labels map if they were listed there (they are generation settings, not claim metadata worth logging).
-
-### No schema or backend changes required.
+### Out of scope
+- No schema changes.
+- No changes to the existing edit-line-item dialog or "Run AI analysis" flow.

@@ -47,6 +47,7 @@ import {
   updateAssessmentSummary,
   addLineItem,
   setAssessmentFeedback,
+  estimateLineItemCost,
 } from "@/lib/claim-actions.functions";
 
 import { streamImage } from "@/lib/stream-image";
@@ -403,6 +404,7 @@ function ClaimDetail() {
       )}
       {adding && assessment && (
         <AddLineItemDialog
+          claimId={id}
           onClose={() => setAdding(false)}
           onSave={async (fields, rationale) => {
             await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
@@ -919,9 +921,11 @@ interface NewLineItemFields {
 }
 
 function AddLineItemDialog({
+  claimId,
   onClose,
   onSave,
 }: {
+  claimId: string;
   onClose: () => void;
   onSave: (fields: NewLineItemFields, rationale: string) => void;
 }) {
@@ -929,15 +933,49 @@ function AddLineItemDialog({
   const [damageType, setDamageType] = useState("");
   const [location, setLocation] = useState("");
   const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
+  const [estimate, setEstimate] = useState<{ part_cost: number; labour_hours: number } | null>(null);
   const [partCost, setPartCost] = useState("0");
   const [hours, setHours] = useState("0");
   const [rationale, setRationale] = useState("");
+  const [estimating, setEstimating] = useState(false);
+  const estimateFn = useServerFn(estimateLineItemCost);
+
+  const canEstimate =
+    repair.trim().length > 0 &&
+    damageType.trim().length > 0 &&
+    location.trim().length > 0 &&
+    !estimating;
 
   const valid =
     repair.trim().length > 0 &&
     damageType.trim().length > 0 &&
     location.trim().length > 0 &&
-    rationale.trim().length >= 3;
+    rationale.trim().length >= 3 &&
+    estimate !== null;
+
+  const lookUpEstimate = async () => {
+    setEstimating(true);
+    try {
+      const result = await estimateFn({
+        data: {
+          claimId,
+          suggested_repair: repair.trim(),
+          damage_type: damageType.trim(),
+          location: location.trim(),
+          severity,
+        },
+      });
+      setEstimate({ part_cost: result.part_cost, labour_hours: result.labour_hours });
+      setPartCost(String(result.part_cost));
+      setHours(String(result.labour_hours));
+      if (result.rationale) toast.success(`AI estimate: ${result.rationale}`);
+      else toast.success("AI estimate ready");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Estimate failed");
+    } finally {
+      setEstimating(false);
+    }
+  };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -960,27 +998,43 @@ function AddLineItemDialog({
               <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="front bumper" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs">Severity</Label>
-              <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minor">Minor</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="severe">Severe</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Part cost</Label>
-              <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">Labour hours</Label>
-              <Input value={hours} onChange={(e) => setHours(e.target.value)} />
-            </div>
+          <div>
+            <Label className="text-xs">Severity</Label>
+            <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minor">Minor</SelectItem>
+                <SelectItem value="moderate">Moderate</SelectItem>
+                <SelectItem value="severe">Severe</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={lookUpEstimate}
+              disabled={!canEstimate}
+            >
+              {estimating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Looking up…</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" /> {estimate ? "Re-run estimate" : "Look up estimate"}</>
+              )}
+            </Button>
+          </div>
+          {estimate && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Part cost</Label>
+                <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Labour hours</Label>
+                <Input value={hours} onChange={(e) => setHours(e.target.value)} />
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Rationale (required)</Label>
             <Textarea
