@@ -202,6 +202,22 @@ function GeneratePage() {
             </div>
           </div>
           <div>
+            <Label className="text-xs">Paint color</Label>
+            <Input value={paintColor} onChange={(e) => setPaintColor(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Scene / setting</Label>
+            <Input value={scene} onChange={(e) => setScene(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Impact area</Label>
+            <Input
+              value={impactArea}
+              onChange={(e) => setImpactArea(e.target.value)}
+              placeholder="e.g. rear bumper and trunk lid"
+            />
+          </div>
+          <div>
             <Label className="text-xs">Incident description</Label>
             <Textarea
               value={description}
