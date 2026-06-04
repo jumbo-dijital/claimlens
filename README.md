@@ -140,7 +140,6 @@ Create a `.env` file (see existing variable names) with at least:
 
 This is a proof-of-concept. **Out of scope:**
 
-- Real authentication / SSO (personas are switched manually)
 - Policyholder-facing claim submission
 - Repair shop / downstream system integration
 - Fully automating claims without human review
