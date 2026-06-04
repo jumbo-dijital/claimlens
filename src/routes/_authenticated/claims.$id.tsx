@@ -249,9 +249,10 @@ function ClaimDetail() {
           </CardHeader>
           <CardContent>
             {!assessment ? (
-              <p className="text-sm text-muted-foreground">
-                No assessment yet. Click "Run AI analysis" to process the photos.
-              </p>
+              <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                {analyzing ? "Analyzing…" : "Run AI analysis"}
+              </Button>
             ) : lineItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">No findings.</p>
             ) : (
