@@ -8,6 +8,29 @@ function genClaimNumber() {
   return `CL-${new Date().getFullYear()}-${n}`;
 }
 
+// Treat null/undefined/"" as equivalent "no value" so clearing optional fields
+// does not pollute diffs with cosmetic changes.
+function normalizeForDiff(v: unknown): unknown {
+  if (v === undefined || v === null || v === "") return null;
+  return v;
+}
+
+function diffPatch(
+  before: Record<string, unknown> | null | undefined,
+  patch: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> {
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  if (!before) return changes;
+  for (const [key, toRaw] of Object.entries(patch)) {
+    if (toRaw === undefined) continue;
+    const from = normalizeForDiff(before[key]);
+    const to = normalizeForDiff(toRaw);
+    if (from === to) continue;
+    changes[key] = { from: before[key] ?? null, to: toRaw ?? null };
+  }
+  return changes;
+}
+
 const ImageModelEnum = z.enum([
   "google/gemini-3.1-flash-image-preview",
   "google/gemini-2.5-flash-image",
