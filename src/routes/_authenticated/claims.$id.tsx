@@ -255,6 +255,7 @@ function ClaimDetail() {
                         const next = current === "up" ? null : "up";
                         await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
                         await refetchAssessment();
+                        refreshActivity();
                       }}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
