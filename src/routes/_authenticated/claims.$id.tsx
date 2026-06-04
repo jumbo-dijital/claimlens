@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -90,6 +90,9 @@ function ClaimDetail() {
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
+  const queryClient = useQueryClient();
+  const refreshActivity = () =>
+    queryClient.invalidateQueries({ queryKey: ["claim-audit", id] });
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
   const [adding, setAdding] = useState(false);
@@ -146,6 +149,7 @@ function ClaimDetail() {
       await analyze({ data: { claimId: id } });
       toast.success("AI analysis complete");
       await Promise.all([refetchClaim(), refetchAssessment(), refetchItems()]);
+      refreshActivity();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Analysis failed");
     } finally {
@@ -158,6 +162,7 @@ function ClaimDetail() {
     toast.success("Submitted for senior adjuster approval");
     router.invalidate();
     refetchClaim();
+    refreshActivity();
   };
 
   return (
@@ -194,6 +199,7 @@ function ClaimDetail() {
         onSave={async (patch) => {
           await update({ data: { claimId: id, patch } });
           await refetchClaim();
+          refreshActivity();
           toast.success("Claim updated");
         }}
         onDelete={async () => {
@@ -215,6 +221,7 @@ function ClaimDetail() {
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
+                refreshActivity();
               }}
             />
             {claim.incident_description && (
@@ -248,6 +255,7 @@ function ClaimDetail() {
                         const next = current === "up" ? null : "up";
                         await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
                         await refetchAssessment();
+                        refreshActivity();
                       }}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
@@ -262,6 +270,7 @@ function ClaimDetail() {
                         const next = current === "down" ? null : "down";
                         await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
                         await refetchAssessment();
+                        refreshActivity();
                       }}
                     >
                       <ThumbsDown className="h-3.5 w-3.5" />
@@ -277,6 +286,7 @@ function ClaimDetail() {
                 onSave={async (summary) => {
                   await updateSummary({ data: { assessmentId: assessment.id, summary } });
                   await refetchAssessment();
+                  refreshActivity();
                   toast.success("Summary updated");
                 }}
               />
@@ -347,6 +357,7 @@ function ClaimDetail() {
                             },
                           });
                           refetchItems();
+                          refreshActivity();
                           toast.success("Line item removed");
                         }}
                       >
@@ -380,6 +391,7 @@ function ClaimDetail() {
             });
             setEditing(null);
             refetchItems();
+            refreshActivity();
             toast.success("Line item updated");
           }}
         />
@@ -391,6 +403,7 @@ function ClaimDetail() {
             await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
             setAdding(false);
             refetchItems();
+            refreshActivity();
             toast.success("Line item added");
           }}
         />
