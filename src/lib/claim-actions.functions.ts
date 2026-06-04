@@ -314,6 +314,7 @@ export const editLineItem = createServerFn({ method: "POST" })
           patch: data.patch,
           rationale: data.rationale,
         } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
