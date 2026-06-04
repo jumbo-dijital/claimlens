@@ -85,8 +85,11 @@ function ClaimDetail() {
   const update = useServerFn(updateClaim);
   const del = useServerFn(deleteClaim);
   const replaceImages = useServerFn(replaceClaimImages);
+  const updateSummary = useServerFn(updateAssessmentSummary);
+  const addItem = useServerFn(addLineItem);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const { data: claim, refetch: refetchClaim } = useQuery({
     queryKey: ["claim", id],
