@@ -526,15 +526,9 @@ function ClaimEditCard({
             </Select>
           </div>
         </div>
-        <div className="grid gap-2 md:grid-cols-3">
-          <div>
-            <Label className="text-xs">Paint color</Label>
-            <Input value={form.paint_color} onChange={(e) => set("paint_color", e.target.value)} />
-          </div>
-          <div className="md:col-span-2">
-            <Label className="text-xs">Scene / setting</Label>
-            <Input value={form.scene} onChange={(e) => set("scene", e.target.value)} />
-          </div>
+        <div>
+          <Label className="text-xs">Paint color</Label>
+          <Input value={form.paint_color} onChange={(e) => set("paint_color", e.target.value)} />
         </div>
         <div>
           <Label className="text-xs">Impact area</Label>
@@ -628,6 +622,15 @@ function ImagePanel({
 
   const GenSettings = (
     <div className="flex flex-wrap items-end gap-2">
+      <div className="min-w-[200px] flex-1">
+        <Label className="text-xs">Scene / setting</Label>
+        <Input
+          value={claim.scene ?? ""}
+          onChange={(e) => onUpdateClaim({ scene: e.target.value })}
+          disabled={generating}
+          placeholder="e.g. suburban driveway, sunny afternoon"
+        />
+      </div>
       <div className="min-w-[200px] flex-1">
         <Label className="text-xs">Image model</Label>
         <Select
