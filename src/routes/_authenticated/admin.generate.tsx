@@ -102,11 +102,16 @@ function GeneratePage() {
         !policyholder.trim() ||
         !make.trim() ||
         !model.trim() ||
+        !year.trim() ||
         !Number.isInteger(yearNumber) ||
+        yearNumber < 1990 ||
+        yearNumber > 2030 ||
         !vehicleClass ||
         !severity ||
         !imgModel ||
-        !angleCount ||
+        !Number.isInteger(angleCount) ||
+        angleCount < 1 ||
+        angleCount > ANGLES.length ||
         !paintColor.trim() ||
         !scene.trim() ||
         !impactArea.trim()
