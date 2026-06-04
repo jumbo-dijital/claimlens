@@ -168,7 +168,7 @@ export const deleteClaim = createServerFn({ method: "POST" })
   });
 
 export const replaceClaimImages = createServerFn({ method: "POST" })
-  .middleware([requireRole("superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
