@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus, ThumbsUp, ThumbsDown } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -46,7 +46,9 @@ import {
   replaceClaimImages,
   updateAssessmentSummary,
   addLineItem,
+  setAssessmentFeedback,
 } from "@/lib/claim-actions.functions";
+
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
 
