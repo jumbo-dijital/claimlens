@@ -507,3 +507,91 @@ export const setAssessmentFeedback = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
+export const estimateLineItemCost = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        suggested_repair: z.string().min(1).max(400),
+        damage_type: z.string().min(1).max(80),
+        location: z.string().min(1).max(160),
+        severity: z.enum(["minor", "moderate", "severe"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const { data: claim, error: claimErr } = await supabaseAdmin
+      .from("claims")
+      .select("vehicle_year,vehicle_make,vehicle_model,vehicle_class")
+      .eq("id", data.claimId)
+      .single();
+    if (claimErr || !claim) throw new Error("Claim not found");
+
+    const vehicleClass = claim.vehicle_class ?? "standard";
+    const { data: catalog } = await supabaseAdmin
+      .from("repair_catalog")
+      .select("part_name,base_part_cost,base_labour_hours,labour_rate,vehicle_class")
+      .eq("vehicle_class", vehicleClass);
+
+    const catalogLines = (catalog ?? [])
+      .slice(0, 40)
+      .map(
+        (c) =>
+          `- ${c.part_name}: part $${Number(c.base_part_cost).toFixed(0)}, ${Number(c.base_labour_hours).toFixed(1)}h @ $${Number(c.labour_rate).toFixed(0)}/h`,
+      )
+      .join("\n");
+
+    const sys = `You are an auto-body repair cost estimator. Estimate part cost (USD) and labour hours for a single repair line item on a ${claim.vehicle_year} ${claim.vehicle_make} ${claim.vehicle_model} (${vehicleClass} class). Use the reference catalog when relevant. Be realistic and conservative.`;
+
+    const userMsg = `Repair: ${data.suggested_repair}
+Damage type: ${data.damage_type}
+Location: ${data.location}
+Severity: ${data.severity}
+
+Reference catalog (${vehicleClass}):
+${catalogLines || "(none)"}
+
+Respond with ONLY a JSON object: {"part_cost": number, "labour_hours": number, "rationale": "string"}`;
+
+    const { generateText } = await import("ai");
+    const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
+    const gateway = createLovableAiGatewayProvider(apiKey);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    let parsed: { part_cost: unknown; labour_hours: unknown; rationale?: unknown };
+    try {
+      const { text } = await generateText({
+        model,
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: userMsg },
+        ],
+      });
+      const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("No JSON in response");
+      parsed = JSON.parse(cleaned.slice(start, end + 1));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("429")) throw new Error("AI rate limit reached. Please wait and try again.");
+      if (msg.includes("402")) throw new Error("AI credits exhausted. Please add credits in Workspace settings.");
+      throw new Error(`Estimate failed: ${msg}`);
+    }
+
+    const partCost = Math.max(0, Math.round(Number(parsed.part_cost) || 0));
+    const labourHours = Math.max(0.1, Math.min(40, Number(parsed.labour_hours) || 1));
+    const rationale =
+      typeof parsed.rationale === "string" ? parsed.rationale.slice(0, 500) : "";
+
+    return {
+      part_cost: partCost,
+      labour_hours: Number(labourHours.toFixed(1)),
+      rationale,
+    };
+  });
