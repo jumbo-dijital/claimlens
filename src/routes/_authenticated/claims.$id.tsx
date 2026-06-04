@@ -223,6 +223,11 @@ function ClaimDetail() {
                 await refetchImages();
                 refreshActivity();
               }}
+              onUpdateClaim={async (patch) => {
+                await update({ data: { claimId: id, patch } });
+                await refetchClaim();
+                refreshActivity();
+              }}
             />
             {claim.incident_description && (
               <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
@@ -600,14 +605,53 @@ function ImagePanel({
   claim,
   images,
   onReplace,
+  onUpdateClaim,
 }: {
   claim: ClaimRow;
   images: ClaimImageRow[];
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
+  onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [generating, setGenerating] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
   const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
+  const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
+  const angleCount = claim.image_angle_count ?? 4;
+
+  const GenSettings = (
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="min-w-[200px] flex-1">
+        <Label className="text-xs">Image model</Label>
+        <Select
+          value={imageModel}
+          onValueChange={(v) => onUpdateClaim({ image_model: v })}
+          disabled={generating}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
+            <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
+            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="w-24">
+        <Label className="text-xs"># of angles</Label>
+        <Select
+          value={String(angleCount)}
+          onValueChange={(v) => onUpdateClaim({ image_angle_count: Number(v) })}
+          disabled={generating}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[1, 2, 3, 4].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   const run = async () => {
     if (!claim.paint_color || !claim.scene || !claim.impact_area) {
