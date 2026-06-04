@@ -221,8 +221,14 @@ function ClaimDetail() {
             <ImagePanel
               claim={claim}
               images={images}
+              isSuperadmin={isSuperadmin}
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
+                await refetchImages();
+                refreshActivity();
+              }}
+              onUpload={async (imgs) => {
+                await addImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
                 refreshActivity();
               }}
