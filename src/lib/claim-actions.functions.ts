@@ -461,3 +461,48 @@ export const addLineItem = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const setAssessmentFeedback = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        assessmentId: z.string().uuid(),
+        feedback: z.enum(["up", "down"]).nullable(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: a } = await supabaseAdmin
+      .from("ai_assessments")
+      .select("claim_id, feedback")
+      .eq("id", data.assessmentId)
+      .single();
+    const from = (a as { feedback?: string | null } | null)?.feedback ?? null;
+    const to = data.feedback;
+    if (from === to) return { ok: true, unchanged: true };
+    const { error } = await supabaseAdmin
+      .from("ai_assessments")
+      .update({
+        feedback: to,
+        feedback_by: to ? context.userId : null,
+        feedback_at: to ? new Date().toISOString() : null,
+      } as never)
+      .eq("id", data.assessmentId);
+    if (error) throw new Error(error.message);
+    if (a?.claim_id) {
+      await supabaseAdmin.from("audit_log").insert({
+        claim_id: a.claim_id,
+        actor_user_id: context.userId,
+        actor_role: context.roles.includes("superadmin")
+          ? "superadmin"
+          : context.roles.includes("adjuster")
+            ? "adjuster"
+            : "agent",
+        action: "assessment_feedback_set",
+        details: { changes: { feedback: { from, to } } } as never,
+      });
+    }
+    return { ok: true };
+  });
+
