@@ -234,6 +234,11 @@ function ClaimDetail() {
                 await refetchImages();
                 refreshActivity();
               }}
+              onDelete={async (claimImageId) => {
+                await removeImage({ data: { claimImageId } });
+                await refetchImages();
+                refreshActivity();
+              }}
               onUpdateClaim={async (patch) => {
                 await update({ data: { claimId: id, patch } });
                 await refetchClaim();
