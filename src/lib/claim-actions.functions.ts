@@ -209,7 +209,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
   });
 
 export const editLineItem = createServerFn({ method: "POST" })
-  .middleware([requireRole("agent", "superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((i: unknown) =>
     z
       .object({
