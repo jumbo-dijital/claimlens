@@ -334,6 +334,7 @@ export const submitForApproval = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
       action: "submitted_for_approval",
       details: {} as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
