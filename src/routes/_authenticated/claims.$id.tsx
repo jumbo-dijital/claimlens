@@ -230,12 +230,6 @@ function ClaimDetail() {
                 refreshActivity();
               }}
             />
-            {claim.incident_description && (
-              <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Policyholder note</div>
-                <div className="mt-1">{claim.incident_description}</div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
