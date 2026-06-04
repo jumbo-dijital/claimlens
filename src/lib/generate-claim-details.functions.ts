@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth-roles.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
@@ -29,15 +29,24 @@ export const generateSyntheticClaimDetails = createServerFn({ method: "POST" })
     const sys = `You fabricate realistic but entirely fictional auto-insurance claim records for a QA/demo environment. Invent a plausible policyholder name, a realistic mainstream vehicle (make/model/year between 1998 and 2025), a paint color (specific tone, e.g. "metallic graphite grey"), a scene/setting describing the location and lighting where the photos would have been taken, an impact area (one of: "front bumper and grille", "rear bumper and trunk lid", "driver side doors and quarter panel", "passenger side doors and quarter panel"), a damage severity (minor/moderate/severe), and a brief 1-3 sentence incident_description from the policyholder's perspective. Vehicle class is "premium" for luxury brands (BMW, Audi, Mercedes, Lexus, Tesla, Porsche, Volvo), otherwise "standard". Vary the outputs — do not repeat the same vehicle, color or scenario across calls.`;
 
     try {
-      const { experimental_output } = await generateText({
+      const { text } = await generateText({
         model,
-        experimental_output: Output.object({ schema: DraftSchema }),
         messages: [
           { role: "system", content: sys },
-          { role: "user", content: "Fabricate one fresh synthetic claim record." },
+          {
+            role: "user",
+            content:
+              'Fabricate one fresh synthetic claim record. Respond with ONLY a JSON object (no markdown, no commentary) with exactly these keys: policyholder_name (string), vehicle_make (string), vehicle_model (string), vehicle_year (number), vehicle_class ("standard"|"premium"), paint_color (string), scene (string), impact_area (string), damage_severity ("minor"|"moderate"|"severe"), incident_description (string).',
+          },
         ],
       });
-      return experimental_output;
+
+      const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("No JSON object in response");
+      const parsed = JSON.parse(cleaned.slice(start, end + 1));
+      return DraftSchema.parse(parsed);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429")) throw new Error("AI rate limit reached. Please wait and try again.");
