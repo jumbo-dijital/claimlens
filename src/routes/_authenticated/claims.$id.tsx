@@ -286,6 +286,7 @@ function ClaimDetail() {
                 onSave={async (summary) => {
                   await updateSummary({ data: { assessmentId: assessment.id, summary } });
                   await refetchAssessment();
+                  refreshActivity();
                   toast.success("Summary updated");
                 }}
               />
