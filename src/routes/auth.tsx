@@ -72,26 +72,6 @@ function AuthPage() {
               Sign in
             </Button>
           </form>
-          <div className="mt-6 rounded-md border border-border bg-muted/40 p-3 text-xs">
-            <p className="mb-2 font-medium">Demo accounts</p>
-            <ul className="space-y-1">
-              {DEMO_ACCOUNTS.map((a) => (
-                <li key={a.email} className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEmail(a.email)}
-                    className="font-mono text-foreground hover:underline"
-                  >
-                    {a.email}
-                  </button>
-                  <span className="text-muted-foreground">{a.role}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-muted-foreground">
-              Ask the workspace owner for the password, or set one via Cloud → Users.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
