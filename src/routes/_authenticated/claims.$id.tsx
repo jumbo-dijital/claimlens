@@ -89,6 +89,7 @@ function ClaimDetail() {
   const replaceImages = useServerFn(replaceClaimImages);
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
+  const setFeedback = useServerFn(setAssessmentFeedback);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
   const [adding, setAdding] = useState(false);
