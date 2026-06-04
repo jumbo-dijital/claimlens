@@ -221,6 +221,7 @@ function ClaimDetail() {
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
+                refreshActivity();
               }}
             />
             {claim.incident_description && (
