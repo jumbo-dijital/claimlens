@@ -10,6 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +25,28 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2 } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
-import { editLineItem, submitForApproval } from "@/lib/claim-actions.functions";
+import {
+  editLineItem,
+  submitForApproval,
+  updateClaim,
+  deleteClaim,
+  replaceClaimImages,
+} from "@/lib/claim-actions.functions";
+import { streamImage } from "@/lib/stream-image";
+import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
 
 export const Route = createFileRoute("/_authenticated/claims/$id")({
   head: () => ({ meta: [{ title: "Claim — ClaimLens" }] }),
@@ -42,6 +68,11 @@ interface LineItem {
   is_deleted: boolean;
 }
 
+type ImageModel =
+  | "google/gemini-3.1-flash-image-preview"
+  | "google/gemini-2.5-flash-image"
+  | "google/gemini-3-pro-image-preview";
+
 function ClaimDetail() {
   const { id } = Route.useParams();
   const router = useRouter();
@@ -49,6 +80,9 @@ function ClaimDetail() {
   const analyze = useServerFn(analyzeClaim);
   const submit = useServerFn(submitForApproval);
   const edit = useServerFn(editLineItem);
+  const update = useServerFn(updateClaim);
+  const del = useServerFn(deleteClaim);
+  const replaceImages = useServerFn(replaceClaimImages);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState<LineItem | null>(null);
 
@@ -59,7 +93,7 @@ function ClaimDetail() {
       return data;
     },
   });
-  const { data: images = [] } = useQuery({
+  const { data: images = [], refetch: refetchImages } = useQuery({
     queryKey: ["claim-images", id],
     queryFn: async () => {
       const { data } = await supabase.from("claim_images").select("*").eq("claim_id", id);
@@ -95,6 +129,7 @@ function ClaimDetail() {
 
   if (!claim) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
+  const isSuperadmin = me?.roles.includes("superadmin") ?? false;
   const total = lineItems.reduce((s, i) => s + Number(i.part_cost) + Number(i.labour_cost), 0);
 
   const runAnalysis = async () => {
@@ -130,7 +165,7 @@ function ClaimDetail() {
           </p>
         </div>
         <div className="flex gap-2">
-          {(me?.roles.includes("adjuster") || me?.roles.includes("superadmin")) &&
+          {(me?.roles.includes("adjuster") || isSuperadmin) &&
             (claim.status === "submitted" || claim.status === "changes_requested") && (
               <Button asChild variant="secondary">
                 <Link to="/claims/$id/review" params={{ id }}>Review</Link>
@@ -149,23 +184,50 @@ function ClaimDetail() {
         </div>
       </div>
 
+      {isSuperadmin && (
+        <ClaimEditCard
+          claim={claim}
+          onSave={async (patch) => {
+            await update({ data: { claimId: id, patch } });
+            await refetchClaim();
+            toast.success("Claim updated");
+          }}
+          onDelete={async () => {
+            await del({ data: { claimId: id } });
+            toast.success("Claim deleted");
+            router.navigate({ to: "/" });
+          }}
+        />
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Damage photos ({images.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {images.map((img) => (
-                <div key={img.id} className="overflow-hidden rounded-md border border-border">
-                  <img src={img.url} alt={img.angle} className="aspect-square w-full object-cover" />
-                  <div className="px-2 py-1 text-xs text-muted-foreground capitalize">{img.angle}</div>
-                </div>
-              ))}
-              {images.length === 0 && (
-                <p className="col-span-2 text-sm text-muted-foreground">No images attached.</p>
-              )}
-            </div>
+            {isSuperadmin ? (
+              <ImagePanel
+                claim={claim}
+                images={images}
+                onReplace={async (imgs) => {
+                  await replaceImages({ data: { claimId: id, images: imgs } });
+                  await refetchImages();
+                }}
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {images.map((img) => (
+                  <div key={img.id} className="overflow-hidden rounded-md border border-border">
+                    <img src={img.url} alt={img.angle} className="aspect-square w-full object-cover" />
+                    <div className="px-2 py-1 text-xs capitalize text-muted-foreground">{img.angle}</div>
+                  </div>
+                ))}
+                {images.length === 0 && (
+                  <p className="col-span-2 text-sm text-muted-foreground">No images attached.</p>
+                )}
+              </div>
+            )}
             {claim.incident_description && (
               <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Policyholder note</div>
@@ -283,6 +345,347 @@ function ClaimDetail() {
             toast.success("Line item updated");
           }}
         />
+      )}
+    </div>
+  );
+}
+
+interface ClaimRow {
+  id: string;
+  policyholder_name: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number;
+  vehicle_class: string | null;
+  incident_description: string | null;
+  paint_color: string | null;
+  scene: string | null;
+  impact_area: string | null;
+  damage_severity: string | null;
+  image_model: string | null;
+  image_angle_count: number | null;
+}
+
+function ClaimEditCard({
+  claim,
+  onSave,
+  onDelete,
+}: {
+  claim: ClaimRow;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    policyholder_name: claim.policyholder_name ?? "",
+    vehicle_make: claim.vehicle_make ?? "",
+    vehicle_model: claim.vehicle_model ?? "",
+    vehicle_year: claim.vehicle_year ?? 2020,
+    vehicle_class: (claim.vehicle_class as "standard" | "premium") ?? "standard",
+    incident_description: claim.incident_description ?? "",
+    paint_color: claim.paint_color ?? "",
+    scene: claim.scene ?? "",
+    impact_area: claim.impact_area ?? "",
+    damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
+    image_model: (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview",
+    image_angle_count: claim.image_angle_count ?? 4,
+  });
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Claim details (editable)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <Label className="text-xs">Policyholder name</Label>
+            <Input value={form.policyholder_name} onChange={(e) => set("policyholder_name", e.target.value)} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">Make</Label>
+              <Input value={form.vehicle_make} onChange={(e) => set("vehicle_make", e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Model</Label>
+              <Input value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Year</Label>
+              <Input
+                type="number"
+                value={form.vehicle_year}
+                onChange={(e) => set("vehicle_year", Number(e.target.value) || form.vehicle_year)}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div>
+            <Label className="text-xs">Vehicle class</Label>
+            <Select value={form.vehicle_class} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Damage severity</Label>
+            <Select value={form.damage_severity} onValueChange={(v) => set("damage_severity", v as "minor" | "moderate" | "severe")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minor">Minor</SelectItem>
+                <SelectItem value="moderate">Moderate</SelectItem>
+                <SelectItem value="severe">Severe</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Image model</Label>
+            <Select value={form.image_model} onValueChange={(v) => set("image_model", v as ImageModel)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
+                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
+                <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs"># of angles</Label>
+            <Select value={String(form.image_angle_count)} onValueChange={(v) => set("image_angle_count", Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-2 md:grid-cols-3">
+          <div>
+            <Label className="text-xs">Paint color</Label>
+            <Input value={form.paint_color} onChange={(e) => set("paint_color", e.target.value)} />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs">Scene / setting</Label>
+            <Input value={form.scene} onChange={(e) => set("scene", e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Impact area</Label>
+          <Input value={form.impact_area} onChange={(e) => set("impact_area", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Incident description</Label>
+          <Textarea
+            value={form.incident_description}
+            onChange={(e) => set("incident_description", e.target.value)}
+            rows={3}
+          />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <Button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(form);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save
+          </Button>
+          <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete
+          </Button>
+        </div>
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this claim?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the claim and all its images, assessments, line items, and reviews. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    await onDelete();
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Delete failed");
+                    setDeleting(false);
+                  }
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ClaimImageRow {
+  id: string;
+  url: string;
+  angle: string;
+  prompt: string | null;
+}
+
+function ImagePanel({
+  claim,
+  images,
+  onReplace,
+}: {
+  claim: ClaimRow;
+  images: ClaimImageRow[];
+  onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
+  const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
+
+  const run = async () => {
+    if (!claim.paint_color || !claim.scene || !claim.impact_area) {
+      toast.error("Set paint color, scene, and impact area before generating.");
+      return;
+    }
+    setGenerating(true);
+    setPreviews([]);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+
+      const angleCount = claim.image_angle_count ?? 4;
+      const angles = ANGLES.slice(0, angleCount);
+      const finals: { url: string; angle: string; prompt: string }[] = [];
+      for (let i = 0; i < angles.length; i++) {
+        const angle = angles[i];
+        const prompt = buildDamagePrompt(angle, claim);
+        setPreviews((p) => [...p, { angle, url: "", final: false, prompt }]);
+        const finalUrl = await streamImage(
+          "/api/generate-damage-image",
+          { prompt, model: claim.image_model ?? "google/gemini-3.1-flash-image-preview" },
+          (dataUrl, isFinal) => {
+            setPreviews((p) =>
+              p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
+            );
+          },
+          { Authorization: `Bearer ${token}` },
+        );
+        finals.push({ url: finalUrl, angle, prompt });
+      }
+      await onReplace(finals);
+      setPreviews([]);
+      toast.success("Images saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Image generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const live = previews.length > 0;
+  const list = live
+    ? previews.map((p, i) => ({
+        key: `live-${i}`,
+        url: p.url,
+        angle: p.angle,
+        prompt: p.prompt,
+        loading: !p.url,
+        blur: p.url && !p.final,
+      }))
+    : images.map((img) => ({
+        key: img.id,
+        url: img.url,
+        angle: img.angle,
+        prompt: img.prompt ?? "",
+        loading: false,
+        blur: false,
+      }));
+
+  return (
+    <div className="space-y-3">
+      {list.length === 0 && !generating ? (
+        <div className="grid place-items-center py-8">
+          <Button
+            size="lg"
+            onClick={run}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Sparkles className="mr-2 h-5 w-5" /> Generate images
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {list.map((p) => (
+              <div key={p.key} className="overflow-hidden rounded-md border border-border">
+                {p.loading ? (
+                  <div className="grid aspect-square w-full place-items-center bg-muted">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <img
+                    src={p.url}
+                    alt={p.angle}
+                    className={
+                      "aspect-square w-full object-cover transition-[filter] duration-300 " +
+                      (p.blur ? "blur-md" : "blur-0")
+                    }
+                  />
+                )}
+                <div className="flex items-center justify-between px-2 py-1 text-xs capitalize text-muted-foreground">
+                  <span>{p.angle}</span>
+                  {p.prompt && (
+                    <button
+                      type="button"
+                      className="text-[10px] uppercase tracking-wide underline-offset-2 hover:underline"
+                      onClick={() => setShownPrompt((s) => ({ ...s, [p.key]: !s[p.key] }))}
+                    >
+                      {shownPrompt[p.key] ? "Hide prompt" : "Show prompt"}
+                    </button>
+                  )}
+                </div>
+                {shownPrompt[p.key] && p.prompt && (
+                  <div className="border-t border-border bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                    {p.prompt}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {!live && (
+            <Button variant="outline" onClick={run} disabled={generating}>
+              {generating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
+              ) : (
+                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+              )}
+            </Button>
+          )}
+        </>
       )}
     </div>
   );
