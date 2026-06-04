@@ -270,6 +270,7 @@ function ClaimDetail() {
                         const next = current === "down" ? null : "down";
                         await setFeedback({ data: { assessmentId: assessment.id, feedback: next } });
                         await refetchAssessment();
+                        refreshActivity();
                       }}
                     >
                       <ThumbsDown className="h-3.5 w-3.5" />
