@@ -162,6 +162,7 @@ function ClaimDetail() {
     toast.success("Submitted for senior adjuster approval");
     router.invalidate();
     refetchClaim();
+    refreshActivity();
   };
 
   return (
