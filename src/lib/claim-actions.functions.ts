@@ -372,6 +372,7 @@ export const reviewClaim = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
       action: `review_${data.decision}`,
       details: { comment: data.comment } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
