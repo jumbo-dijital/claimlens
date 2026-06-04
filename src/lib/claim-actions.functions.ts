@@ -94,7 +94,7 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
   });
 
 export const updateClaim = createServerFn({ method: "POST" })
-  .middleware([requireRole("superadmin")])
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
