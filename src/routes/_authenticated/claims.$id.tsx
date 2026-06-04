@@ -716,14 +716,17 @@ function ImagePanel({
   return (
     <div className="space-y-3">
       {list.length === 0 && !generating ? (
-        <div className="grid place-items-center py-8">
-          <Button
-            size="lg"
-            onClick={run}
-            className="bg-blue-600 text-white hover:bg-blue-700"
-          >
-            <Sparkles className="mr-2 h-5 w-5" /> Generate images
-          </Button>
+        <div className="space-y-4 py-4">
+          {GenSettings}
+          <div className="grid place-items-center pt-2">
+            <Button
+              size="lg"
+              onClick={run}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              <Sparkles className="mr-2 h-5 w-5" /> Generate images
+            </Button>
+          </div>
         </div>
       ) : (
         <>
@@ -765,13 +768,16 @@ function ImagePanel({
             ))}
           </div>
           {!live && (
-            <Button variant="outline" onClick={run} disabled={generating}>
-              {generating ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
-              ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
-              )}
-            </Button>
+            <div className="space-y-2 pt-2">
+              {GenSettings}
+              <Button variant="outline" onClick={run} disabled={generating}>
+                {generating ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+                )}
+              </Button>
+            </div>
           )}
         </>
       )}
