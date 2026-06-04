@@ -199,6 +199,7 @@ function ClaimDetail() {
         onSave={async (patch) => {
           await update({ data: { claimId: id, patch } });
           await refetchClaim();
+          refreshActivity();
           toast.success("Claim updated");
         }}
         onDelete={async () => {
