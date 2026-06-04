@@ -125,7 +125,7 @@ export const updateClaim = createServerFn({ method: "POST" })
     await supabaseAdmin.from("audit_log").insert({
       claim_id: data.claimId,
       actor_user_id: context.userId,
-      actor_role: "superadmin",
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
       details: { patch: data.patch } as never,
     });
