@@ -91,6 +91,7 @@ function ClaimDetail() {
   const del = useServerFn(deleteClaim);
   const replaceImages = useServerFn(replaceClaimImages);
   const addImages = useServerFn(addClaimImages);
+  const removeImage = useServerFn(deleteClaimImage);
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
