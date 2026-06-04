@@ -119,6 +119,9 @@ bun run dev
 
 ### Environment variables
 
+> [!NOTE]
+> The `.env` file in this repository is **not for secrets**. It only contains publicly publishable configuration values (e.g., Supabase URL and publishable key). Real secrets such as `SUPABASE_SERVICE_ROLE_KEY` and `LOVABLE_API_KEY` are stored in Lovable Cloud's secret store and injected at runtime — they should never be committed to version control.
+
 Create a `.env` file (see existing variable names) with at least:
 
 | Variable | Scope | Description |
