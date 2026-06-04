@@ -140,6 +140,19 @@ export const updateClaim = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const patchKeys = Object.keys(data.patch).filter(
+      (k) => (data.patch as Record<string, unknown>)[k] !== undefined,
+    );
+    const selectCols = patchKeys.length > 0 ? patchKeys.join(",") : "id";
+    const { data: before } = await supabaseAdmin
+      .from("claims")
+      .select(selectCols)
+      .eq("id", data.claimId)
+      .single();
+    const changes = diffPatch(before as Record<string, unknown> | null, data.patch);
+    if (Object.keys(changes).length === 0) {
+      return { ok: true, unchanged: true };
+    }
     const { error } = await supabaseAdmin
       .from("claims")
       .update(data.patch)
@@ -150,7 +163,7 @@ export const updateClaim = createServerFn({ method: "POST" })
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
-      details: { patch: data.patch } as never,
+      details: { changes, patch: data.patch } as never,
     });
     return { ok: true };
   });
