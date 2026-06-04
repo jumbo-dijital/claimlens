@@ -357,6 +357,7 @@ function ClaimDetail() {
                             },
                           });
                           refetchItems();
+                          refreshActivity();
                           toast.success("Line item removed");
                         }}
                       >
