@@ -452,7 +452,6 @@ function ClaimEditCard({
     vehicle_class: (claim.vehicle_class as "standard" | "premium") ?? "standard",
     incident_description: claim.incident_description ?? "",
     paint_color: claim.paint_color ?? "",
-    scene: claim.scene ?? "",
     impact_area: claim.impact_area ?? "",
     damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
   });
@@ -721,9 +720,9 @@ function ImagePanel({
   return (
     <div className="space-y-3">
       {list.length === 0 && !generating ? (
-        <div className="space-y-4 py-4">
+        <div className="py-4">
           {GenSettings}
-          <div className="grid place-items-center pt-2">
+          <div className="mt-3 flex justify-end">
             <Button
               size="lg"
               onClick={run}
