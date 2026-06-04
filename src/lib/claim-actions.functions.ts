@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireRole } from "@/lib/auth-roles.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { getRequestAuditContext } from "@/lib/audit-context.server";
 
 function genClaimNumber() {
   const n = Math.floor(Math.random() * 900000 + 100000);
@@ -113,6 +114,7 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
       actor_role: "superadmin",
       action: "claim_created_synthetic",
       details: { image_count: data.images.length } as never,
+      ...getRequestAuditContext(),
     });
 
     return { claimId: claim.id };
@@ -167,6 +169,7 @@ export const updateClaim = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
       details: { changes, patch: data.patch } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
@@ -202,6 +205,7 @@ export const deleteClaim = createServerFn({ method: "POST" })
       actor_role: "superadmin",
       action: "claim_deleted",
       details: { claim_id: data.claimId } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
@@ -252,6 +256,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
         changes: { images: { from: fromList, to: toList } },
         image_count: data.images.length,
       } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
@@ -309,6 +314,7 @@ export const editLineItem = createServerFn({ method: "POST" })
           patch: data.patch,
           rationale: data.rationale,
         } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
@@ -328,6 +334,7 @@ export const submitForApproval = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
       action: "submitted_for_approval",
       details: {} as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
@@ -365,6 +372,7 @@ export const reviewClaim = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
       action: `review_${data.decision}`,
       details: { comment: data.comment } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
@@ -407,6 +415,7 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
         details: {
           changes: { summary: { from: fromSummary, to: data.summary } },
         } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
@@ -460,6 +469,7 @@ export const addLineItem = createServerFn({ method: "POST" })
             : "agent",
         action: "line_item_added",
         details: { line_item_id: inserted?.id, fields: data.fields, rationale: data.rationale } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
@@ -504,6 +514,7 @@ export const setAssessmentFeedback = createServerFn({ method: "POST" })
             : "agent",
         action: "assessment_feedback_set",
         details: { changes: { feedback: { from, to } } } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };

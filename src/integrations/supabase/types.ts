@@ -160,6 +160,8 @@ export type Database = {
           created_at: string
           details: Json | null
           id: string
+          ip_address: string | null
+          user_agent: string | null
         }
         Insert: {
           action: string
@@ -170,6 +172,8 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id?: string
+          ip_address?: string | null
+          user_agent?: string | null
         }
         Update: {
           action?: string
@@ -180,6 +184,8 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id?: string
+          ip_address?: string | null
+          user_agent?: string | null
         }
         Relationships: [
           {

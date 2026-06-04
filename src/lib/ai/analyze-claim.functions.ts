@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateText } from "ai";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getRequestAuditContext } from "@/lib/audit-context.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 const DAMAGE_TYPES = ["scratch", "dent", "crack", "broken", "missing", "structural", "other"] as const;
@@ -227,6 +228,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
         overall_confidence: aiOutput.overall_confidence,
         image_quality_issues: aiOutput.image_quality_issues,
       } as never,
+      ...getRequestAuditContext(),
     });
 
     return { assessmentId: assessment.id, findings: aiOutput.findings.length };
