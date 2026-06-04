@@ -189,6 +189,7 @@ export type Database = {
           claim_id: string
           created_at: string
           id: string
+          prompt: string | null
           quality_flag: string | null
           url: string
         }
@@ -198,6 +199,7 @@ export type Database = {
           claim_id: string
           created_at?: string
           id?: string
+          prompt?: string | null
           quality_flag?: string | null
           url: string
         }
@@ -207,6 +209,7 @@ export type Database = {
           claim_id?: string
           created_at?: string
           id?: string
+          prompt?: string | null
           quality_flag?: string | null
           url?: string
         }
@@ -226,11 +229,17 @@ export type Database = {
           created_at: string
           current_agent_id: string | null
           current_reviewer_id: string | null
+          damage_severity: string | null
           id: string
+          image_angle_count: number | null
+          image_model: string | null
+          impact_area: string | null
           incident_date: string
           incident_description: string | null
+          paint_color: string | null
           policy_number: string
           policyholder_name: string
+          scene: string | null
           status: string
           updated_at: string
           vehicle_class: string
@@ -244,11 +253,17 @@ export type Database = {
           created_at?: string
           current_agent_id?: string | null
           current_reviewer_id?: string | null
+          damage_severity?: string | null
           id?: string
+          image_angle_count?: number | null
+          image_model?: string | null
+          impact_area?: string | null
           incident_date: string
           incident_description?: string | null
+          paint_color?: string | null
           policy_number: string
           policyholder_name: string
+          scene?: string | null
           status?: string
           updated_at?: string
           vehicle_class?: string
@@ -262,11 +277,17 @@ export type Database = {
           created_at?: string
           current_agent_id?: string | null
           current_reviewer_id?: string | null
+          damage_severity?: string | null
           id?: string
+          image_angle_count?: number | null
+          image_model?: string | null
+          impact_area?: string | null
           incident_date?: string
           incident_description?: string | null
+          paint_color?: string | null
           policy_number?: string
           policyholder_name?: string
+          scene?: string | null
           status?: string
           updated_at?: string
           vehicle_class?: string
