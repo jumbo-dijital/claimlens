@@ -888,6 +888,54 @@ function ImagePanel({
           }}
         />
       )}
+      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="capitalize">{lightbox?.angle ?? "Photo"}</DialogTitle>
+          </DialogHeader>
+          {lightbox && (
+            <img
+              src={lightbox.url}
+              alt={lightbox.angle}
+              className="mx-auto max-h-[80vh] w-auto object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removes the {confirmDelete?.angle} photo from this claim. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!confirmDelete) return;
+                const target = confirmDelete;
+                setDeletingId(target.id);
+                setConfirmDelete(null);
+                try {
+                  await onDelete(target.id);
+                  toast.success("Photo deleted");
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Delete failed");
+                } finally {
+                  setDeletingId(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
