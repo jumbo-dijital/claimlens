@@ -259,10 +259,11 @@ function ClaimDetail() {
                 <Sparkles className="mr-2 h-4 w-4" />
                 {analyzing ? "Analyzing…" : "Run AI analysis"}
               </Button>
-            ) : lineItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No findings.</p>
             ) : (
               <div className="space-y-2">
+                {lineItems.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No findings yet.</p>
+                )}
                 {lineItems.map((li) => (
                   <div
                     key={li.id}
@@ -325,9 +326,14 @@ function ClaimDetail() {
                     </div>
                   </div>
                 ))}
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-sm font-medium">Estimated total</span>
-                  <span className="text-lg font-semibold">{formatCurrency(total)}</span>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+                    <Plus className="mr-1 h-4 w-4" /> Add line item
+                  </Button>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Estimated total</div>
+                    <div className="text-lg font-semibold">{formatCurrency(total)}</div>
+                  </div>
                 </div>
               </div>
             )}
