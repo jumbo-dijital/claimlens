@@ -422,6 +422,7 @@ function ClaimDetail() {
 interface ClaimRow {
   id: string;
   policyholder_name: string;
+  policy_number: string | null;
   vehicle_make: string;
   vehicle_model: string;
   vehicle_year: number;
@@ -448,6 +449,7 @@ function ClaimEditCard({
 }) {
   const [form, setForm] = useState({
     policyholder_name: claim.policyholder_name ?? "",
+    policy_number: claim.policy_number ?? "",
     vehicle_make: claim.vehicle_make ?? "",
     vehicle_model: claim.vehicle_model ?? "",
     vehicle_year: claim.vehicle_year ?? 2020,
@@ -468,7 +470,7 @@ function ClaimEditCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Claim details (editable)</CardTitle>
+        <CardTitle className="text-base">Claim details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 md:grid-cols-2">
@@ -476,6 +478,13 @@ function ClaimEditCard({
             <Label className="text-xs">Policyholder name</Label>
             <Input value={form.policyholder_name} onChange={(e) => set("policyholder_name", e.target.value)} />
           </div>
+          <div>
+            <Label className="text-xs">Policy number</Label>
+            <Input value={form.policy_number} onChange={(e) => set("policy_number", e.target.value)} />
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div />
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label className="text-xs">Make</Label>
