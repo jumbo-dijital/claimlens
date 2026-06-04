@@ -1,7 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,144 +14,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Eraser, Sparkles, Loader2 } from "lucide-react";
-import { streamImage } from "@/lib/stream-image";
+import { Sparkles, Loader2, RefreshCw, ArrowRight, Eraser } from "lucide-react";
 import { createSyntheticClaim } from "@/lib/claim-actions.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { generateSyntheticClaimDetails } from "@/lib/generate-claim-details.functions";
+import { claimDraftStore, useClaimDraft, type ClaimDraft } from "@/lib/use-claim-draft";
 
 export const Route = createFileRoute("/_authenticated/admin/generate")({
   component: GeneratePage,
 });
 
-const ANGLES = ["front", "rear", "driver side", "passenger side"];
-type VehicleClass = "standard" | "premium";
-type DamageSeverity = "minor" | "moderate" | "severe";
-
 function GeneratePage() {
   const router = useRouter();
+  const generateDetails = useServerFn(generateSyntheticClaimDetails);
   const createClaim = useServerFn(createSyntheticClaim);
-
-  const [policyholder, setPolicyholder] = useState("");
-  const [make, setMake] = useState("");
-  const [model, setModel] = useState("");
-  const [year, setYear] = useState("");
-  const [vehicleClass, setVehicleClass] = useState<VehicleClass | undefined>();
-  const [severity, setSeverity] = useState<DamageSeverity | undefined>();
-  const [imgModel, setImgModel] = useState<string | undefined>();
-  const [count, setCount] = useState<string | undefined>();
-  const [paintColor, setPaintColor] = useState("");
-  const [scene, setScene] = useState("");
-  const [impactArea, setImpactArea] = useState("");
-  const [description, setDescription] = useState("");
-
+  const draft = useClaimDraft();
   const [generating, setGenerating] = useState(false);
-  const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean }[]>([]);
-
-  const angleDescription = (angle: string) => {
-    switch (angle) {
-      case "front":
-        return "Camera positioned directly in front of the vehicle, showing the entire front fascia (hood, grille, headlights, front bumper, windshield). The front of the car is fully visible; the rear is NOT visible.";
-      case "rear":
-        return "Camera positioned directly behind the vehicle, showing the entire rear (trunk lid, tail lights, rear bumper, rear windshield, license plate). The rear of the car is fully visible; the front is NOT visible.";
-      case "driver side":
-        return "Camera positioned perpendicular to the driver-side (left) of the vehicle, showing the full left profile from front wheel to rear wheel.";
-      case "passenger side":
-        return "Camera positioned perpendicular to the passenger-side (right) of the vehicle, showing the full right profile from front wheel to rear wheel.";
-      default:
-        return `Camera angle: ${angle} view of the vehicle.`;
-    }
-  };
-
-  const buildPrompt = (angle: string) => {
-    const ia = impactArea.toLowerCase();
-    const isDamagedAngle =
-      (angle === "rear" && /rear|trunk|tail|back/.test(ia)) ||
-      (angle === "front" && /front|hood|grille|bonnet/.test(ia)) ||
-      (angle === "driver side" && /driver|left/.test(ia)) ||
-      (angle === "passenger side" && /passenger|right/.test(ia));
-    const damageClause = isDamagedAngle
-      ? `Visible ${severity} collision damage concentrated on the ${impactArea} (matching the incident: ${description}). Damage is ONLY on the ${impactArea} — every other panel is pristine and undamaged.`
-      : `This angle shows an UNDAMAGED side of the vehicle — bodywork is pristine, no dents, no scratches, no paint damage. The collision damage is on the ${impactArea} and is NOT visible from this angle.`;
-    return `Photorealistic insurance claim smartphone photograph. Subject: the SAME specific ${year} ${make} ${model} (${vehicleClass} class) sedan, painted in ${paintColor} (exact same paint tone, finish, and reflectivity in every photo of this set). Setting: ${scene} — identical location, identical lighting, identical weather, identical time of day, as if all photos were taken within 30 seconds of each other from the same spot, only the camera angle changed. ${angleDescription(angle)} ${damageClause} Slightly amateur handheld smartphone photo quality, natural perspective, no people, no other vehicles in foreground, no text overlays, no watermarks, no logos beyond factory vehicle badging.`;
-  };
-
-  const resetForm = () => {
-    setPolicyholder("");
-    setMake("");
-    setModel("");
-    setYear("");
-    setVehicleClass(undefined);
-    setSeverity(undefined);
-    setImgModel(undefined);
-    setCount(undefined);
-    setPaintColor("");
-    setScene("");
-    setImpactArea("");
-    setDescription("");
-    setPreviews([]);
-  };
+  const [saving, setSaving] = useState(false);
 
   const runGenerate = async () => {
     setGenerating(true);
-    setPreviews([]);
     try {
-      const yearNumber = Number(year);
-      const angleCount = Number(count);
-      if (
-        !policyholder.trim() ||
-        !make.trim() ||
-        !model.trim() ||
-        !year.trim() ||
-        !Number.isInteger(yearNumber) ||
-        yearNumber < 1990 ||
-        yearNumber > 2030 ||
-        !vehicleClass ||
-        !severity ||
-        !imgModel ||
-        !Number.isInteger(angleCount) ||
-        angleCount < 1 ||
-        angleCount > ANGLES.length ||
-        !paintColor.trim() ||
-        !scene.trim() ||
-        !impactArea.trim()
-      ) {
-        throw new Error("Complete the claim form before generating.");
-      }
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess.session?.access_token;
-      if (!token) throw new Error("Not signed in");
-      const angles = ANGLES.slice(0, angleCount);
-      const finalImages: { url: string; angle: string }[] = [];
-      for (let i = 0; i < angles.length; i++) {
-        const angle = angles[i];
-        setPreviews((p) => [...p, { angle, url: "", final: false }]);
-        const finalUrl = await streamImage(
-          "/api/generate-damage-image",
-          { prompt: buildPrompt(angle) },
-          (dataUrl, isFinal) => {
-            setPreviews((p) =>
-              p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
-            );
-          },
-          { Authorization: `Bearer ${token}` },
-        );
-        finalImages.push({ url: finalUrl, angle });
-      }
-      toast.success("Images generated. Creating claim…");
-      const res = await createClaim({
-        data: {
-          policyholder_name: policyholder.trim(),
-          vehicle_make: make.trim(),
-          vehicle_model: model.trim(),
-          vehicle_year: yearNumber,
-          vehicle_class: vehicleClass,
-          incident_description: description,
-          images: finalImages,
-        },
+      const d = await generateDetails();
+      claimDraftStore.set({
+        ...d,
+        image_model: "google/gemini-3.1-flash-image-preview",
+        image_angle_count: 4,
       });
-      toast.success("Claim created");
-      flushSync(() => resetForm());
-      router.navigate({ to: "/claims/$id", params: { id: res.claimId } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -160,43 +47,110 @@ function GeneratePage() {
     }
   };
 
+  const onSave = async () => {
+    if (!draft) return;
+    setSaving(true);
+    try {
+      const res = await createClaim({
+        data: {
+          policyholder_name: draft.policyholder_name,
+          vehicle_make: draft.vehicle_make,
+          vehicle_model: draft.vehicle_model,
+          vehicle_year: draft.vehicle_year,
+          vehicle_class: draft.vehicle_class,
+          incident_description: draft.incident_description,
+          paint_color: draft.paint_color,
+          scene: draft.scene,
+          impact_area: draft.impact_area,
+          damage_severity: draft.damage_severity,
+          image_model: draft.image_model as ClaimDraft["image_model"],
+          image_angle_count: draft.image_angle_count,
+          images: [],
+        },
+      });
+      claimDraftStore.set(null);
+      toast.success("Claim saved");
+      router.navigate({ to: "/claims/$id", params: { id: res.claimId } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!draft) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center">
+        <Card className="w-full max-w-lg">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              Synthesize a fully-fabricated demo claim with AI. You'll review and tweak
+              the details before saving.
+            </p>
+            <Button
+              size="lg"
+              onClick={runGenerate}
+              disabled={generating}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {generating ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating…</>
+              ) : (
+                <><Sparkles className="mr-2 h-5 w-5" /> Generate claim details</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const patch = (p: Partial<ClaimDraft>) => claimDraftStore.patch(p);
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[480px_1fr]">
+    <div className="mx-auto max-w-3xl">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Generate synthetic claim</CardTitle>
+          <CardTitle className="text-base">Synthetic claim (unsaved)</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Uses Gemini image models to fabricate realistic damage photos for testing.
+            Review and edit before saving. Nothing is written to the database until you
+            click "Save and proceed to images".
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
             <Label className="text-xs">Policyholder name</Label>
-            <Input value={policyholder} onChange={(e) => setPolicyholder(e.target.value)} />
+            <Input
+              value={draft.policyholder_name}
+              onChange={(e) => patch({ policyholder_name: e.target.value })}
+            />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label className="text-xs">Make</Label>
-              <Input value={make} onChange={(e) => setMake(e.target.value)} />
+              <Input value={draft.vehicle_make} onChange={(e) => patch({ vehicle_make: e.target.value })} />
             </div>
             <div>
               <Label className="text-xs">Model</Label>
-              <Input value={model} onChange={(e) => setModel(e.target.value)} />
+              <Input value={draft.vehicle_model} onChange={(e) => patch({ vehicle_model: e.target.value })} />
             </div>
             <div>
               <Label className="text-xs">Year</Label>
               <Input
                 type="number"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
+                value={draft.vehicle_year}
+                onChange={(e) => patch({ vehicle_year: Number(e.target.value) || draft.vehicle_year })}
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Vehicle class</Label>
-              <Select value={vehicleClass} onValueChange={(v) => setVehicleClass(v as VehicleClass)}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <Select
+                value={draft.vehicle_class}
+                onValueChange={(v) => patch({ vehicle_class: v as ClaimDraft["vehicle_class"] })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
@@ -205,8 +159,11 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs">Damage severity</Label>
-              <Select value={severity} onValueChange={(v) => setSeverity(v as DamageSeverity)}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <Select
+                value={draft.damage_severity}
+                onValueChange={(v) => patch({ damage_severity: v as ClaimDraft["damage_severity"] })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="minor">Minor</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
@@ -218,8 +175,8 @@ function GeneratePage() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Image model</Label>
-              <Select value={imgModel} onValueChange={setImgModel}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <Select value={draft.image_model} onValueChange={(v) => patch({ image_model: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
                   <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
@@ -229,8 +186,11 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs"># of angles</Label>
-              <Select value={count} onValueChange={setCount}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <Select
+                value={String(draft.image_angle_count)}
+                onValueChange={(v) => patch({ image_angle_count: Number(v) })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4].map((n) => (
                     <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -241,70 +201,52 @@ function GeneratePage() {
           </div>
           <div>
             <Label className="text-xs">Paint color</Label>
-            <Input value={paintColor} onChange={(e) => setPaintColor(e.target.value)} />
+            <Input value={draft.paint_color} onChange={(e) => patch({ paint_color: e.target.value })} />
           </div>
           <div>
             <Label className="text-xs">Scene / setting</Label>
-            <Input value={scene} onChange={(e) => setScene(e.target.value)} />
+            <Input value={draft.scene} onChange={(e) => patch({ scene: e.target.value })} />
           </div>
           <div>
             <Label className="text-xs">Impact area</Label>
-            <Input
-              value={impactArea}
-              onChange={(e) => setImpactArea(e.target.value)}
-              placeholder="e.g. rear bumper and trunk lid"
-            />
+            <Input value={draft.impact_area} onChange={(e) => patch({ impact_area: e.target.value })} />
           </div>
           <div>
             <Label className="text-xs">Incident description</Label>
             <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={draft.incident_description}
+              onChange={(e) => patch({ incident_description: e.target.value })}
               rows={3}
             />
           </div>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <Button onClick={runGenerate} disabled={generating} className="w-full">
+
+          <div className="grid gap-2 pt-2 sm:grid-cols-3">
+            <Button variant="outline" onClick={runGenerate} disabled={generating || saving}>
               {generating ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
               ) : (
-                <><Sparkles className="mr-2 h-4 w-4" /> Generate damage photos + claim</>
+                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={resetForm} disabled={generating}>
+            <Button
+              onClick={onSave}
+              disabled={saving || generating}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {saving ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+              ) : (
+                <>Save and proceed to images <ArrowRight className="ml-2 h-4 w-4" /></>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => claimDraftStore.set(null)}
+              disabled={saving || generating}
+            >
               <Eraser className="mr-2 h-4 w-4" /> Clear
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Generated images</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {previews.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Previews will stream in here as the model generates.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {previews.map((p, i) => (
-                <div key={i} className="overflow-hidden rounded-md border border-border">
-                  {p.url ? (
-                    <img
-                      src={p.url}
-                      alt={p.angle}
-                      className={"aspect-square w-full object-cover transition-[filter] duration-300 " + (p.final ? "blur-0" : "blur-md")}
-                    />
-                  ) : (
-                    <div className="grid aspect-square w-full place-items-center bg-muted">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="px-2 py-1 text-xs capitalize text-muted-foreground">{p.angle}</div>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
