@@ -8,6 +8,12 @@ function genClaimNumber() {
   return `CL-${new Date().getFullYear()}-${n}`;
 }
 
+const ImageModelEnum = z.enum([
+  "google/gemini-3.1-flash-image-preview",
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image-preview",
+]);
+
 export const createSyntheticClaim = createServerFn({ method: "POST" })
   .middleware([requireRole("superadmin")])
   .inputValidator((input: unknown) =>
@@ -19,10 +25,23 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
         vehicle_year: z.number().int().min(1990).max(2030),
         vehicle_class: z.enum(["standard", "premium"]).default("standard"),
         incident_description: z.string().max(2000).default(""),
+        paint_color: z.string().max(80).default(""),
+        scene: z.string().max(400).default(""),
+        impact_area: z.string().max(160).default(""),
+        damage_severity: z.enum(["minor", "moderate", "severe"]).default("moderate"),
+        image_model: ImageModelEnum.default("google/gemini-3.1-flash-image-preview"),
+        image_angle_count: z.number().int().min(1).max(4).default(4),
         images: z
-          .array(z.object({ url: z.string().min(1), angle: z.string().max(60) }))
-          .min(1)
-          .max(8),
+          .array(
+            z.object({
+              url: z.string().min(1),
+              angle: z.string().max(60),
+              prompt: z.string().max(4000).optional(),
+            }),
+          )
+          .min(0)
+          .max(8)
+          .default([]),
       })
       .parse(input),
   )
@@ -39,20 +58,29 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
         vehicle_class: data.vehicle_class,
         incident_date: new Date().toISOString().slice(0, 10),
         incident_description: data.incident_description,
+        paint_color: data.paint_color || null,
+        scene: data.scene || null,
+        impact_area: data.impact_area || null,
+        damage_severity: data.damage_severity,
+        image_model: data.image_model,
+        image_angle_count: data.image_angle_count,
         status: "new",
       })
       .select()
       .single();
     if (error || !claim) throw new Error(error?.message ?? "Failed to create claim");
 
-    await supabaseAdmin.from("claim_images").insert(
-      data.images.map((img) => ({
-        claim_id: claim.id,
-        url: img.url,
-        angle: img.angle,
-        ai_generated: true,
-      })),
-    );
+    if (data.images.length > 0) {
+      await supabaseAdmin.from("claim_images").insert(
+        data.images.map((img) => ({
+          claim_id: claim.id,
+          url: img.url,
+          angle: img.angle,
+          prompt: img.prompt ?? null,
+          ai_generated: true,
+        })),
+      );
+    }
 
     await supabaseAdmin.from("audit_log").insert({
       claim_id: claim.id,
@@ -63,6 +91,121 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
     });
 
     return { claimId: claim.id };
+  });
+
+export const updateClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("superadmin")])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        patch: z.object({
+          policyholder_name: z.string().min(1).max(120).optional(),
+          vehicle_make: z.string().min(1).max(60).optional(),
+          vehicle_model: z.string().min(1).max(60).optional(),
+          vehicle_year: z.number().int().min(1990).max(2030).optional(),
+          vehicle_class: z.enum(["standard", "premium"]).optional(),
+          incident_description: z.string().max(2000).optional(),
+          paint_color: z.string().max(80).optional(),
+          scene: z.string().max(400).optional(),
+          impact_area: z.string().max(160).optional(),
+          damage_severity: z.enum(["minor", "moderate", "severe"]).optional(),
+          image_model: ImageModelEnum.optional(),
+          image_angle_count: z.number().int().min(1).max(4).optional(),
+        }),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("claims")
+      .update(data.patch)
+      .eq("id", data.claimId);
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: data.claimId,
+      actor_user_id: context.userId,
+      actor_role: "superadmin",
+      action: "claim_updated",
+      details: { patch: data.patch } as never,
+    });
+    return { ok: true };
+  });
+
+export const deleteClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("superadmin")])
+  .inputValidator((input: unknown) =>
+    z.object({ claimId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    // Best-effort cascade: images, line items, assessments, reviews, audit, then claim.
+    const { data: assessments } = await supabaseAdmin
+      .from("ai_assessments")
+      .select("id")
+      .eq("claim_id", data.claimId);
+    const assessmentIds = (assessments ?? []).map((a) => a.id);
+    if (assessmentIds.length > 0) {
+      await supabaseAdmin
+        .from("assessment_line_items")
+        .delete()
+        .in("assessment_id", assessmentIds);
+    }
+    await supabaseAdmin.from("ai_assessments").delete().eq("claim_id", data.claimId);
+    await supabaseAdmin.from("claim_images").delete().eq("claim_id", data.claimId);
+    await supabaseAdmin.from("reviews").delete().eq("claim_id", data.claimId);
+    await supabaseAdmin.from("audit_log").delete().eq("claim_id", data.claimId);
+    const { error } = await supabaseAdmin.from("claims").delete().eq("id", data.claimId);
+    if (error) throw new Error(error.message);
+    // audit_log row referencing this claim_id would FK-fail after delete; log a fresh row without claim_id
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: null,
+      actor_user_id: context.userId,
+      actor_role: "superadmin",
+      action: "claim_deleted",
+      details: { claim_id: data.claimId } as never,
+    });
+    return { ok: true };
+  });
+
+export const replaceClaimImages = createServerFn({ method: "POST" })
+  .middleware([requireRole("superadmin")])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        images: z
+          .array(
+            z.object({
+              url: z.string().min(1),
+              angle: z.string().max(60),
+              prompt: z.string().max(4000),
+            }),
+          )
+          .min(1)
+          .max(8),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await supabaseAdmin.from("claim_images").delete().eq("claim_id", data.claimId);
+    const { error } = await supabaseAdmin.from("claim_images").insert(
+      data.images.map((img) => ({
+        claim_id: data.claimId,
+        url: img.url,
+        angle: img.angle,
+        prompt: img.prompt,
+        ai_generated: true,
+      })),
+    );
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: data.claimId,
+      actor_user_id: context.userId,
+      actor_role: "superadmin",
+      action: "claim_images_replaced",
+      details: { image_count: data.images.length } as never,
+    });
+    return { ok: true };
   });
 
 export const editLineItem = createServerFn({ method: "POST" })
