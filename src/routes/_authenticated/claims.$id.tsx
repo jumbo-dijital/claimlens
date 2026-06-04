@@ -366,6 +366,8 @@ function ClaimDetail() {
           }}
         />
       )}
+
+      <AuditTimeline claimId={id} />
     </div>
   );
 }
