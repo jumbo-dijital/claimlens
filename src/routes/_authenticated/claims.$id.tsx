@@ -223,6 +223,11 @@ function ClaimDetail() {
                 await refetchImages();
                 refreshActivity();
               }}
+              onUpdateClaim={async (patch) => {
+                await update({ data: { claimId: id, patch } });
+                await refetchClaim();
+                refreshActivity();
+              }}
             />
             {claim.incident_description && (
               <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
@@ -452,8 +457,6 @@ function ClaimEditCard({
     scene: claim.scene ?? "",
     impact_area: claim.impact_area ?? "",
     damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
-    image_model: (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview",
-    image_angle_count: claim.image_angle_count ?? 4,
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -492,7 +495,7 @@ function ClaimEditCard({
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs">Vehicle class</Label>
             <Select value={form.vehicle_class} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
@@ -511,28 +514,6 @@ function ClaimEditCard({
                 <SelectItem value="minor">Minor</SelectItem>
                 <SelectItem value="moderate">Moderate</SelectItem>
                 <SelectItem value="severe">Severe</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Image model</Label>
-            <Select value={form.image_model} onValueChange={(v) => set("image_model", v as ImageModel)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
-                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
-                <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs"># of angles</Label>
-            <Select value={String(form.image_angle_count)} onValueChange={(v) => set("image_angle_count", Number(v))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4].map((n) => (
-                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -624,14 +605,53 @@ function ImagePanel({
   claim,
   images,
   onReplace,
+  onUpdateClaim,
 }: {
   claim: ClaimRow;
   images: ClaimImageRow[];
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
+  onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [generating, setGenerating] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
   const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
+  const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
+  const angleCount = claim.image_angle_count ?? 4;
+
+  const GenSettings = (
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="min-w-[200px] flex-1">
+        <Label className="text-xs">Image model</Label>
+        <Select
+          value={imageModel}
+          onValueChange={(v) => onUpdateClaim({ image_model: v })}
+          disabled={generating}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
+            <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
+            <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="w-24">
+        <Label className="text-xs"># of angles</Label>
+        <Select
+          value={String(angleCount)}
+          onValueChange={(v) => onUpdateClaim({ image_angle_count: Number(v) })}
+          disabled={generating}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[1, 2, 3, 4].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   const run = async () => {
     if (!claim.paint_color || !claim.scene || !claim.impact_area) {
@@ -696,14 +716,17 @@ function ImagePanel({
   return (
     <div className="space-y-3">
       {list.length === 0 && !generating ? (
-        <div className="grid place-items-center py-8">
-          <Button
-            size="lg"
-            onClick={run}
-            className="bg-blue-600 text-white hover:bg-blue-700"
-          >
-            <Sparkles className="mr-2 h-5 w-5" /> Generate images
-          </Button>
+        <div className="space-y-4 py-4">
+          {GenSettings}
+          <div className="grid place-items-center pt-2">
+            <Button
+              size="lg"
+              onClick={run}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              <Sparkles className="mr-2 h-5 w-5" /> Generate images
+            </Button>
+          </div>
         </div>
       ) : (
         <>
@@ -745,13 +768,16 @@ function ImagePanel({
             ))}
           </div>
           {!live && (
-            <Button variant="outline" onClick={run} disabled={generating}>
-              {generating ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
-              ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
-              )}
-            </Button>
+            <div className="space-y-2 pt-2">
+              {GenSettings}
+              <Button variant="outline" onClick={run} disabled={generating}>
+                {generating ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+                )}
+              </Button>
+            </div>
           )}
         </>
       )}
