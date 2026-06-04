@@ -149,6 +149,7 @@ function ClaimDetail() {
       await analyze({ data: { claimId: id } });
       toast.success("AI analysis complete");
       await Promise.all([refetchClaim(), refetchAssessment(), refetchItems()]);
+      refreshActivity();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Analysis failed");
     } finally {
