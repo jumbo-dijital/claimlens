@@ -483,25 +483,22 @@ function ClaimEditCard({
             <Input value={form.policy_number} onChange={(e) => set("policy_number", e.target.value)} />
           </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div />
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <Label className="text-xs">Make</Label>
-              <Input value={form.vehicle_make} onChange={(e) => set("vehicle_make", e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">Model</Label>
-              <Input value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">Year</Label>
-              <Input
-                type="number"
-                value={form.vehicle_year}
-                onChange={(e) => set("vehicle_year", Number(e.target.value) || form.vehicle_year)}
-              />
-            </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <Label className="text-xs">Make</Label>
+            <Input value={form.vehicle_make} onChange={(e) => set("vehicle_make", e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Model</Label>
+            <Input value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Year</Label>
+            <Input
+              type="number"
+              value={form.vehicle_year}
+              onChange={(e) => set("vehicle_year", Number(e.target.value) || form.vehicle_year)}
+            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
