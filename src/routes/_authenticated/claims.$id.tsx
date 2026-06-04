@@ -185,21 +185,20 @@ function ClaimDetail() {
         </div>
       </div>
 
-      {isSuperadmin && (
-        <ClaimEditCard
-          claim={claim}
-          onSave={async (patch) => {
-            await update({ data: { claimId: id, patch } });
-            await refetchClaim();
-            toast.success("Claim updated");
-          }}
-          onDelete={async () => {
-            await del({ data: { claimId: id } });
-            toast.success("Claim deleted");
-            router.navigate({ to: "/" });
-          }}
-        />
-      )}
+      <ClaimEditCard
+        claim={claim}
+        canDelete={isSuperadmin}
+        onSave={async (patch) => {
+          await update({ data: { claimId: id, patch } });
+          await refetchClaim();
+          toast.success("Claim updated");
+        }}
+        onDelete={async () => {
+          await del({ data: { claimId: id } });
+          toast.success("Claim deleted");
+          router.navigate({ to: "/" });
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card>
@@ -207,28 +206,14 @@ function ClaimDetail() {
             <CardTitle className="text-base">Damage photos ({images.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {isSuperadmin ? (
-              <ImagePanel
-                claim={claim}
-                images={images}
-                onReplace={async (imgs) => {
-                  await replaceImages({ data: { claimId: id, images: imgs } });
-                  await refetchImages();
-                }}
-              />
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {images.map((img) => (
-                  <div key={img.id} className="overflow-hidden rounded-md border border-border">
-                    <img src={img.url} alt={img.angle} className="aspect-square w-full object-cover" />
-                    <div className="px-2 py-1 text-xs capitalize text-muted-foreground">{img.angle}</div>
-                  </div>
-                ))}
-                {images.length === 0 && (
-                  <p className="col-span-2 text-sm text-muted-foreground">No images attached.</p>
-                )}
-              </div>
-            )}
+            <ImagePanel
+              claim={claim}
+              images={images}
+              onReplace={async (imgs) => {
+                await replaceImages({ data: { claimId: id, images: imgs } });
+                await refetchImages();
+              }}
+            />
             {claim.incident_description && (
               <div className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Policyholder note</div>
@@ -241,7 +226,7 @@ function ClaimDetail() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">AI assessment</CardTitle>
+              <CardTitle className="text-base">Claim assessment</CardTitle>
               <div className="flex items-center gap-2">
                 {assessment?.overall_confidence != null && (
                   <span className="text-xs text-muted-foreground">
@@ -256,8 +241,16 @@ function ClaimDetail() {
                 )}
               </div>
             </div>
-            {assessment?.summary && (
-              <p className="text-sm text-muted-foreground">{assessment.summary}</p>
+            {assessment && (
+              <SummaryEditor
+                key={assessment.id}
+                initial={assessment.summary ?? ""}
+                onSave={async (summary) => {
+                  await updateSummary({ data: { assessmentId: assessment.id, summary } });
+                  await refetchAssessment();
+                  toast.success("Summary updated");
+                }}
+              />
             )}
           </CardHeader>
           <CardContent>
