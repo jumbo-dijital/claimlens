@@ -1,0 +1,2 @@
+ALTER TABLE public.assessment_line_items DROP CONSTRAINT assessment_line_items_edited_by_fkey;
+ALTER TABLE public.assessment_line_items ADD CONSTRAINT assessment_line_items_edited_by_fkey FOREIGN KEY (edited_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
