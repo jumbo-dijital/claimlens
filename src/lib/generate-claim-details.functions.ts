@@ -5,16 +5,16 @@ import { requireRole } from "@/lib/auth-roles.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 const DraftSchema = z.object({
-  policyholder_name: z.string().min(2).max(80),
-  vehicle_make: z.string().min(1).max(40),
-  vehicle_model: z.string().min(1).max(40),
-  vehicle_year: z.number().int().min(1995).max(2026),
+  policyholder_name: z.string(),
+  vehicle_make: z.string(),
+  vehicle_model: z.string(),
+  vehicle_year: z.number(),
   vehicle_class: z.enum(["standard", "premium"]),
-  paint_color: z.string().min(2).max(60),
-  scene: z.string().min(5).max(300),
-  impact_area: z.string().min(3).max(120),
+  paint_color: z.string(),
+  scene: z.string(),
+  impact_area: z.string(),
   damage_severity: z.enum(["minor", "moderate", "severe"]),
-  incident_description: z.string().min(10).max(800),
+  incident_description: z.string(),
 });
 
 export const generateSyntheticClaimDetails = createServerFn({ method: "POST" })
