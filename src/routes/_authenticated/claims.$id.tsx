@@ -452,8 +452,6 @@ function ClaimEditCard({
     scene: claim.scene ?? "",
     impact_area: claim.impact_area ?? "",
     damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
-    image_model: (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview",
-    image_angle_count: claim.image_angle_count ?? 4,
   });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -492,7 +490,7 @@ function ClaimEditCard({
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs">Vehicle class</Label>
             <Select value={form.vehicle_class} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
@@ -511,28 +509,6 @@ function ClaimEditCard({
                 <SelectItem value="minor">Minor</SelectItem>
                 <SelectItem value="moderate">Moderate</SelectItem>
                 <SelectItem value="severe">Severe</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Image model</Label>
-            <Select value={form.image_model} onValueChange={(v) => set("image_model", v as ImageModel)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
-                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
-                <SelectItem value="google/gemini-3-pro-image-preview">Gemini 3 Pro Image (HQ)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs"># of angles</Label>
-            <Select value={String(form.image_angle_count)} onValueChange={(v) => set("image_angle_count", Number(v))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4].map((n) => (
-                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
