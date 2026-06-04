@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/use-me";
@@ -613,7 +613,7 @@ function ImagePanel({
   const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
   const angleCount = claim.image_angle_count ?? 4;
 
-  const GenSettings = (
+  const renderGenControls = (action: ReactNode) => (
     <div className="flex flex-wrap items-end gap-2">
       <div className="min-w-[200px] flex-1">
         <Label className="text-xs">Scene / setting</Label>
@@ -654,6 +654,7 @@ function ImagePanel({
           </SelectContent>
         </Select>
       </div>
+      <div className="shrink-0">{action}</div>
     </div>
   );
 
@@ -721,16 +722,15 @@ function ImagePanel({
     <div className="space-y-3">
       {list.length === 0 && !generating ? (
         <div className="py-4">
-          {GenSettings}
-          <div className="mt-3 flex justify-end">
+          {renderGenControls(
             <Button
               size="lg"
               onClick={run}
               className="bg-blue-600 text-white hover:bg-blue-700"
             >
               <Sparkles className="mr-2 h-5 w-5" /> Generate images
-            </Button>
-          </div>
+            </Button>,
+          )}
         </div>
       ) : (
         <>
@@ -772,15 +772,16 @@ function ImagePanel({
             ))}
           </div>
           {!live && (
-            <div className="space-y-2 pt-2">
-              {GenSettings}
-              <Button variant="outline" onClick={run} disabled={generating}>
+            <div className="pt-2">
+              {renderGenControls(
+                <Button variant="outline" onClick={run} disabled={generating}>
                 {generating ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
                 ) : (
                   <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
                 )}
-              </Button>
+                </Button>,
+              )}
             </div>
           )}
         </>
