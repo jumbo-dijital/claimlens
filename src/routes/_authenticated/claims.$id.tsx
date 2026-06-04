@@ -784,3 +784,161 @@ function EditDialog({
     </Dialog>
   );
 }
+
+function SummaryEditor({
+  initial,
+  onSave,
+}: {
+  initial: string;
+  onSave: (summary: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const dirty = value !== initial;
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={3}
+        placeholder="Assessment summary…"
+        className="text-sm"
+      />
+      {dirty && (
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setValue(initial)} disabled={saving}>
+            Reset
+          </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(value);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+            Save summary
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface NewLineItemFields {
+  damage_type: string;
+  location: string;
+  severity: "minor" | "moderate" | "severe";
+  suggested_repair: string;
+  part_cost: number;
+  labour_hours: number;
+  labour_cost: number;
+}
+
+function AddLineItemDialog({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (fields: NewLineItemFields, rationale: string) => void;
+}) {
+  const [repair, setRepair] = useState("");
+  const [damageType, setDamageType] = useState("");
+  const [location, setLocation] = useState("");
+  const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
+  const [partCost, setPartCost] = useState("0");
+  const [hours, setHours] = useState("0");
+  const [rationale, setRationale] = useState("");
+
+  const valid =
+    repair.trim().length > 0 &&
+    damageType.trim().length > 0 &&
+    location.trim().length > 0 &&
+    rationale.trim().length >= 3;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add line item</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Repair description</Label>
+            <Input value={repair} onChange={(e) => setRepair(e.target.value)} placeholder="e.g. Replace front bumper" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Damage type</Label>
+              <Input value={damageType} onChange={(e) => setDamageType(e.target.value)} placeholder="dent, scratch, crack…" />
+            </div>
+            <div>
+              <Label className="text-xs">Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="front bumper" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">Severity</Label>
+              <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minor">Minor</SelectItem>
+                  <SelectItem value="moderate">Moderate</SelectItem>
+                  <SelectItem value="severe">Severe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Part cost</Label>
+              <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Labour hours</Label>
+              <Input value={hours} onChange={(e) => setHours(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Rationale (required)</Label>
+            <Textarea
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder="Why are you adding this line item?"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={!valid}
+            onClick={() => {
+              const hoursNum = parseFloat(hours) || 0;
+              const partNum = parseFloat(partCost) || 0;
+              onSave(
+                {
+                  damage_type: damageType.trim(),
+                  location: location.trim(),
+                  severity,
+                  suggested_repair: repair.trim(),
+                  part_cost: partNum,
+                  labour_hours: hoursNum,
+                  labour_cost: hoursNum * 95,
+                },
+                rationale,
+              );
+            }}
+          >
+            Add line item
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
