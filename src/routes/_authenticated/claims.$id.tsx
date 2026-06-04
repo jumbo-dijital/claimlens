@@ -45,6 +45,7 @@ import {
   deleteClaim,
   replaceClaimImages,
   addClaimImages,
+  deleteClaimImage,
   updateAssessmentSummary,
   addLineItem,
   setAssessmentFeedback,
