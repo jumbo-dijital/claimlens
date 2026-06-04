@@ -122,7 +122,7 @@ export type Database = {
             foreignKeyName: "assessment_line_items_edited_by_fkey"
             columns: ["edited_by"]
             isOneToOne: false
-            referencedRelation: "personas"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
