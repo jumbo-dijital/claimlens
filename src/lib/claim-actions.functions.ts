@@ -469,6 +469,7 @@ export const addLineItem = createServerFn({ method: "POST" })
             : "agent",
         action: "line_item_added",
         details: { line_item_id: inserted?.id, fields: data.fields, rationale: data.rationale } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
