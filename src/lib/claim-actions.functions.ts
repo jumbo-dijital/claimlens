@@ -560,8 +560,7 @@ ${catalogLines || "(none)"}
 
 Respond with ONLY a JSON object: {"part_cost": number, "labour_hours": number, "rationale": "string"}`;
 
-    const { generateText } = await import("ai");
-    const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
+    
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
 
