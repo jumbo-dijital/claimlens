@@ -391,6 +391,7 @@ function ClaimDetail() {
             });
             setEditing(null);
             refetchItems();
+            refreshActivity();
             toast.success("Line item updated");
           }}
         />
