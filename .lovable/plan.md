@@ -1,23 +1,27 @@
-## Goal
-Replace US-centric "driver side / passenger side" terminology with unambiguous "left side / right side" across UI labels, prompt text, and stored angle values. Wipe existing claim data so no legacy values remain.
+I found the core issue: the current prompts define “left side” and “right side” using the viewer’s left/right while looking at the front of the car. That reverses the vehicle’s actual left/right and contradicts the synthetic-claim prompt, which says sides are relative to the vehicle facing forward. This explains why the model can generate the same physical side twice.
 
-## Changes
+Plan:
 
-### 1. `src/lib/claim-image-prompt.ts`
-- `ANGLES` → `["front", "rear", "left side", "right side"]`.
-- Switch cases renamed to `"left side"` / `"right side"`.
-- Angle descriptions reworded without driver/passenger framing:
-  - left side → "Camera positioned perpendicular to the LEFT side of the vehicle (the side on the viewer's left when looking at the front of the car), showing the full left profile from front wheel to rear wheel."
-  - right side → mirror equivalent.
-- `isDamagedAngle` regex matches `left` / `right` only — no `driver`/`passenger` fallback.
+1. Fix side definitions in `src/lib/claim-image-prompt.ts`
+   - Define left/right from the vehicle’s perspective: as if seated in the car facing forward.
+   - Remove the current “viewer’s left/right when looking at the front” wording.
+   - Add explicit side-profile orientation cues so the two side prompts are visually distinct:
+     - Left side: camera on vehicle-left; front end points toward one image edge, rear toward the opposite edge.
+     - Right side: camera on vehicle-right; front/rear orientation is reversed from the left-side prompt.
+   - Add clear “do not mirror / do not show the opposite side” language for each side.
 
-### 2. `src/lib/generate-claim-details.functions.ts`
-- Update synthetic-claim system prompt impact_area options to: `"front bumper and grille"`, `"rear bumper and trunk lid"`, `"left side doors and quarter panel"`, `"right side doors and quarter panel"`.
-- Add: "Never use 'driver side' or 'passenger side' — always describe sides as left or right relative to the vehicle facing forward."
+2. Tighten damage visibility rules
+   - For the damaged side, state that damage must appear only on that named physical side.
+   - For the undamaged side, state that this is the opposite physical side and must be pristine.
+   - Keep the regex limited to `left` and `right` only, with no `driver`/`passenger` fallback.
 
-### 3. Data wipe
-- Delete all rows from `claim_images`, `assessment_line_items`, `ai_assessments`, `reviews`, `audit_log` (where `entity_type='claim'`), and `claims`. Done via the insert tool.
+3. Fix the synthetic claim prompt in `src/lib/generate-claim-details.functions.ts`
+   - Replace the current inconsistent parenthetical with: “left/right are from the vehicle occupant’s perspective while facing forward.”
+   - Keep the instruction to never use “driver side” or “passenger side”.
 
-## Out of scope
-- No DB schema changes.
-- No legacy-value compatibility — old terms are deleted, not migrated.
+4. Optional UI clarity in existing edit forms
+   - Update the Impact area label/help copy to say left/right are vehicle-left/right, not viewer-left/right, so edited claims don’t reintroduce ambiguous wording.
+
+5. Regeneration behavior
+   - No database schema change is needed.
+   - Existing generated images should be regenerated after the prompt update; I won’t delete data unless you explicitly ask again for this specific batch.
