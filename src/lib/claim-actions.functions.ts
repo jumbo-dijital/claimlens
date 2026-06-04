@@ -114,6 +114,7 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
       actor_role: "superadmin",
       action: "claim_created_synthetic",
       details: { image_count: data.images.length } as never,
+      ...getRequestAuditContext(),
     });
 
     return { claimId: claim.id };
