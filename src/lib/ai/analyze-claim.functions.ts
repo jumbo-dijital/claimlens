@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+
+const DAMAGE_TYPES = ["scratch", "dent", "crack", "broken", "missing", "structural", "other"] as const;
+const SEVERITIES = ["minor", "moderate", "severe"] as const;
 
 const DamageSchema = z.object({
   overall_confidence: z.number().min(0).max(1),
@@ -10,9 +13,9 @@ const DamageSchema = z.object({
   findings: z
     .array(
       z.object({
-        damage_type: z.enum(["scratch", "dent", "crack", "broken", "missing", "structural", "other"]),
+        damage_type: z.enum(DAMAGE_TYPES),
         location: z.string(),
-        severity: z.enum(["minor", "moderate", "severe"]),
+        severity: z.enum(SEVERITIES),
         suggested_repair: z.string(),
         confidence: z.number().min(0).max(1),
         rationale: z.string(),
@@ -22,6 +25,70 @@ const DamageSchema = z.object({
     .max(20),
   image_quality_issues: z.array(z.string()).default([]),
 });
+
+type DamageOutput = z.infer<typeof DamageSchema>;
+
+function clampConfidence(value: unknown, fallback = 0.65) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(0, Math.min(1, numeric));
+}
+
+function normalizeDamageType(value: unknown): DamageOutput["findings"][number]["damage_type"] {
+  const lower = String(value ?? "").toLowerCase();
+  if (DAMAGE_TYPES.includes(lower as (typeof DAMAGE_TYPES)[number])) return lower as (typeof DAMAGE_TYPES)[number];
+  if (/scuff|scrape|paint|abrasion/.test(lower)) return "scratch";
+  if (/dent|ding|deform|crease/.test(lower)) return "dent";
+  if (/crack|fracture|split/.test(lower)) return "crack";
+  if (/break|broken|shatter/.test(lower)) return "broken";
+  if (/missing|detached|absent/.test(lower)) return "missing";
+  if (/structural|frame|chassis|alignment/.test(lower)) return "structural";
+  return "other";
+}
+
+function normalizeSeverity(value: unknown): DamageOutput["findings"][number]["severity"] {
+  const lower = String(value ?? "").toLowerCase();
+  if (lower.includes("severe") || lower.includes("major") || lower.includes("heavy") || lower.includes("high")) return "severe";
+  if (lower.includes("minor") || lower.includes("light") || lower.includes("low") || lower.includes("small")) return "minor";
+  return "moderate";
+}
+
+function extractJsonFromResponse(response: string): unknown {
+  const cleaned = response.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) throw new Error("No JSON object found in AI response");
+
+  const json = cleaned
+    .slice(start, end + 1)
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  return JSON.parse(json);
+}
+
+function normalizeAiOutput(raw: unknown): DamageOutput {
+  const input = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const rawFindings = Array.isArray(input.findings) ? input.findings : [];
+  const findings = rawFindings
+    .filter((finding): finding is Record<string, unknown> => !!finding && typeof finding === "object")
+    .slice(0, 20)
+    .map((finding) => ({
+      damage_type: normalizeDamageType(finding.damage_type),
+      location: String(finding.location || "visible exterior panel"),
+      severity: normalizeSeverity(finding.severity),
+      suggested_repair: String(finding.suggested_repair || "Inspect and repair affected exterior panel"),
+      confidence: clampConfidence(finding.confidence),
+      rationale: String(finding.rationale || "Visible damage identified in the supplied photographs."),
+    }));
+
+  return DamageSchema.parse({
+    overall_confidence: clampConfidence(input.overall_confidence, findings.length ? 0.7 : 0.4),
+    summary: String(input.summary || (findings.length ? "Damage identified from supplied photographs." : "No clear vehicle damage identified from supplied photographs.")),
+    findings,
+    image_quality_issues: Array.isArray(input.image_quality_issues) ? input.image_quality_issues.map(String) : [],
+  });
+}
 
 import { requireRole } from "@/lib/auth-roles.server";
 
