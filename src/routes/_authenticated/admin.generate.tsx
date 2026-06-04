@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Eraser, Sparkles, Loader2 } from "lucide-react";
 import { streamImage } from "@/lib/stream-image";
 import { createSyntheticClaim } from "@/lib/claim-actions.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,27 +25,25 @@ export const Route = createFileRoute("/_authenticated/admin/generate")({
 });
 
 const ANGLES = ["front", "rear", "driver side", "passenger side"];
+type VehicleClass = "standard" | "premium";
+type DamageSeverity = "minor" | "moderate" | "severe";
 
 function GeneratePage() {
   const router = useRouter();
   const createClaim = useServerFn(createSyntheticClaim);
 
-  const [policyholder, setPolicyholder] = useState("Jordan Reyes");
-  const [make, setMake] = useState("Toyota");
-  const [model, setModel] = useState("Camry");
-  const [year, setYear] = useState(2021);
-  const [vehicleClass, setVehicleClass] = useState<"standard" | "premium">("standard");
-  const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
-  const [imgModel, setImgModel] = useState("google/gemini-3.1-flash-image-preview");
-  const [count, setCount] = useState(2);
-  const [paintColor, setPaintColor] = useState("metallic silver");
-  const [scene, setScene] = useState(
-    "empty asphalt parking lot, overcast midday light, low-rise retail building in background",
-  );
-  const [impactArea, setImpactArea] = useState("rear bumper and trunk lid");
-  const [description, setDescription] = useState(
-    "Rear-end collision in parking lot. Other driver backed into my vehicle.",
-  );
+  const [policyholder, setPolicyholder] = useState("");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [vehicleClass, setVehicleClass] = useState<VehicleClass | undefined>();
+  const [severity, setSeverity] = useState<DamageSeverity | undefined>();
+  const [imgModel, setImgModel] = useState<string | undefined>();
+  const [count, setCount] = useState<string | undefined>();
+  const [paintColor, setPaintColor] = useState("");
+  const [scene, setScene] = useState("");
+  const [impactArea, setImpactArea] = useState("");
+  const [description, setDescription] = useState("");
 
   const [generating, setGenerating] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean }[]>([]);
@@ -81,14 +80,14 @@ function GeneratePage() {
     setPolicyholder("");
     setMake("");
     setModel("");
-    setYear(2021);
-    setVehicleClass("standard");
-    setSeverity("moderate");
-    setImgModel("google/gemini-3.1-flash-image-preview");
-    setCount(2);
-    setPaintColor("metallic silver");
-    setScene("empty asphalt parking lot, overcast midday light, low-rise retail building in background");
-    setImpactArea("rear bumper and trunk lid");
+    setYear("");
+    setVehicleClass(undefined);
+    setSeverity(undefined);
+    setImgModel(undefined);
+    setCount(undefined);
+    setPaintColor("");
+    setScene("");
+    setImpactArea("");
     setDescription("");
     setPreviews([]);
   };
@@ -97,10 +96,32 @@ function GeneratePage() {
     setGenerating(true);
     setPreviews([]);
     try {
+      const yearNumber = Number(year);
+      const angleCount = Number(count);
+      if (
+        !policyholder.trim() ||
+        !make.trim() ||
+        !model.trim() ||
+        !year.trim() ||
+        !Number.isInteger(yearNumber) ||
+        yearNumber < 1990 ||
+        yearNumber > 2030 ||
+        !vehicleClass ||
+        !severity ||
+        !imgModel ||
+        !Number.isInteger(angleCount) ||
+        angleCount < 1 ||
+        angleCount > ANGLES.length ||
+        !paintColor.trim() ||
+        !scene.trim() ||
+        !impactArea.trim()
+      ) {
+        throw new Error("Complete the claim form before generating.");
+      }
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
-      const angles = ANGLES.slice(0, count);
+      const angles = ANGLES.slice(0, angleCount);
       const finalImages: { url: string; angle: string }[] = [];
       for (let i = 0; i < angles.length; i++) {
         const angle = angles[i];
@@ -120,17 +141,17 @@ function GeneratePage() {
       toast.success("Images generated. Creating claim…");
       const res = await createClaim({
         data: {
-          policyholder_name: policyholder,
-          vehicle_make: make,
-          vehicle_model: model,
-          vehicle_year: year,
+          policyholder_name: policyholder.trim(),
+          vehicle_make: make.trim(),
+          vehicle_model: model.trim(),
+          vehicle_year: yearNumber,
           vehicle_class: vehicleClass,
           incident_description: description,
           images: finalImages,
         },
       });
       toast.success("Claim created");
-      resetForm();
+      flushSync(() => resetForm());
       router.navigate({ to: "/claims/$id", params: { id: res.claimId } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
@@ -167,15 +188,15 @@ function GeneratePage() {
               <Input
                 type="number"
                 value={year}
-                onChange={(e) => setYear(parseInt(e.target.value) || 2020)}
+                onChange={(e) => setYear(e.target.value)}
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Vehicle class</Label>
-              <Select value={vehicleClass} onValueChange={(v) => setVehicleClass(v as "standard" | "premium")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={vehicleClass} onValueChange={(v) => setVehicleClass(v as VehicleClass)}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
@@ -184,8 +205,8 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs">Damage severity</Label>
-              <Select value={severity} onValueChange={(v) => setSeverity(v as "minor" | "moderate" | "severe")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={severity} onValueChange={(v) => setSeverity(v as DamageSeverity)}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="minor">Minor</SelectItem>
                   <SelectItem value="moderate">Moderate</SelectItem>
@@ -198,7 +219,7 @@ function GeneratePage() {
             <div>
               <Label className="text-xs">Image model</Label>
               <Select value={imgModel} onValueChange={setImgModel}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
                   <SelectItem value="google/gemini-2.5-flash-image">Nano Banana</SelectItem>
@@ -208,8 +229,8 @@ function GeneratePage() {
             </div>
             <div>
               <Label className="text-xs"># of angles</Label>
-              <Select value={String(count)} onValueChange={(v) => setCount(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={count} onValueChange={setCount}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4].map((n) => (
                     <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -242,13 +263,18 @@ function GeneratePage() {
               rows={3}
             />
           </div>
-          <Button onClick={runGenerate} disabled={generating} className="w-full">
-            {generating ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
-            ) : (
-              <><Sparkles className="mr-2 h-4 w-4" /> Generate damage photos + claim</>
-            )}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Button onClick={runGenerate} disabled={generating} className="w-full">
+              {generating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" /> Generate damage photos + claim</>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={resetForm} disabled={generating}>
+              <Eraser className="mr-2 h-4 w-4" /> Clear
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
