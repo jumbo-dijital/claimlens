@@ -1,44 +1,71 @@
 ## Goal
 
-Capture the requesting browser's IP address and User-Agent string on every new `audit_log` row going forward. No backfill of existing rows.
+Make manual uploads the primary way to add damage photos. Generation becomes a superadmin-only secondary action, gated off once any uploaded photo exists. Move generation settings into a modal and prerender placeholder tiles during generation.
 
 ## Changes
 
-### 1. Database migration
+All work is in `src/routes/_authenticated/claims.$id.tsx` and `src/lib/claim-actions.functions.ts`. Images continue to be stored as base64 data URLs in `claim_images.url` (same pattern used today for generated images) — no storage bucket needed.
 
-Add two nullable columns to `public.audit_log`:
+### 1. Backend: append-only upload server fn
 
-- `ip_address text` — client IP captured server-side
-- `user_agent text` — raw User-Agent header
+In `src/lib/claim-actions.functions.ts`, add `addClaimImages`:
 
-Nullable so existing rows stay valid and any future row that lacks request context (e.g., a system-initiated cron job) can still insert.
+- Role: `agent`, `adjuster`, `superadmin` (everyone who can edit a claim).
+- Input: `{ claimId, images: [{ url, angle }] }` where `url` is a base64 data URL (size-bound the validator, e.g. each url ≤ ~10 MB worth of base64).
+- Inserts rows with `ai_generated: false`, `prompt: null`. Does NOT replace existing images.
+- Writes an `audit_log` entry `claim_images_uploaded` with the count.
 
-### 2. Shared helper
+Leave `replaceClaimImages` unchanged — generation still wipes and replaces.
 
-New file `src/lib/audit-context.server.ts` exporting `getRequestAuditContext()` that uses TanStack's server runtime to read:
+### 2. Upload UI (primary)
 
-- IP via `getRequestIP({ xForwardedFor: true })`
-- User-Agent via `getRequestHeader('user-agent')`
+In `ImagePanel`, add an upload control as the primary action:
 
-Returns `{ ip_address, user_agent }` (either may be `null`).
+- A "Upload photos" `Button` (primary variant) that opens a hidden `<input type="file" accept="image/*" multiple />`.
+- For each selected file: read with `FileReader.readAsDataURL`, derive `angle` from the file name (fallback to "uploaded"), call the new `addClaimImages` fn.
+- Show a small inline spinner per pending upload and append to the grid as they resolve. Toast on completion or per-file failure.
+- Validate client-side: image MIME type, max file size (e.g. 10 MB).
 
-### 3. Wire helper into every server-side audit insert
+### 3. Generation gating
 
-All `audit_log` inserts today live in server functions running with `supabaseAdmin`:
+Compute `hasUploaded = images.some((i) => i.ai_generated === false)`.
 
-- `src/lib/claim-actions.functions.ts` (9 insert sites)
-- `src/lib/ai/analyze-claim.functions.ts` (1 insert site)
+- Hide both "Generate images" and "Regenerate" buttons when `hasUploaded` is true.
+- Hide both for non-superadmin users regardless. Superadmin check: `me?.roles.includes('superadmin')`.
+- The "Run AI analysis" button on the assessment card is unrelated and stays as-is.
 
-Each handler calls `getRequestAuditContext()` once at the top, then spreads the result into every `audit_log` insert payload in that handler.
+### 4. Generation settings modal
 
-The one client-side reference to `audit_log` (`src/routes/_authenticated/claims.$id.tsx`) is a read-only `SELECT` for the timeline UI — no change needed there.
+Replace the inline `renderGenControls` row with:
 
-### 4. Regenerated Supabase types
+- A secondary-styled "Generate images" button (outline variant, `Sparkles` icon) shown only to superadmins when no uploads exist.
+- A new `GenerateImagesDialog` with three fields:
+  - **Scene / setting** — `<Textarea rows={3}>`, persisted via `onUpdateClaim({ scene })` on change (same as today).
+  - **Image model** — same `Select` as today.
+  - **# of angles** — same `Select` as today.
+- Footer: "Cancel" and "Generate" buttons. Clicking Generate closes the modal and immediately runs the existing `run()` generation flow.
 
-After the migration runs, `src/integrations/supabase/types.ts` is regenerated automatically, so the new fields become typed on `audit_log` inserts.
+The inline "Regenerate" button stays in the Damage photos card (outside the modal), shown only to superadmins and only when `!hasUploaded` and at least one generated image exists. Regenerate uses the persisted scene / model / angle count without reopening the modal.
+
+### 5. Prerender placeholder tiles during generation
+
+Refactor the generation loop in `run()`:
+
+- Before the loop, seed `previews` with `angleCount` placeholder entries (`{ angle, url: "", final: false, prompt: "" }`) so all tiles render immediately with their loading spinners.
+- Inside the loop, update the i-th entry in place (replace `setPreviews((p) => [...p, ...])` with the existing index-based update). Set `prompt` on the entry when it becomes known.
+- The grid already handles `loading: !p.url` — no change to the rendering branch.
+
+### 6. Layout
+
+Damage photos card body, in order:
+
+1. Photo grid (if any).
+2. Action row: "Upload photos" (primary) + "Generate images" (secondary, superadmin + no uploads) when the grid is empty or whenever there are no images; "Upload photos" + "Regenerate" (secondary, superadmin + no uploads) when generated images already exist.
+
+The empty state (no photos yet) shows the upload + generate buttons together so the user can choose.
 
 ## Out of scope
 
-- No backfill of `ip_address` / `user_agent` for existing rows.
-- No new UI surface for the new fields (the audit page can be updated in a follow-up if you want them displayed).
-- No change to RLS — the new columns inherit the table's existing policy.
+- No migration to a real storage bucket; keeping data URLs preserves the existing pattern.
+- No change to `replaceClaimImages`, `analyzeClaim`, or the assessment flow.
+- No backfill of `ai_generated` on existing rows (existing generated rows already have `ai_generated: true`).
