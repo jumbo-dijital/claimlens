@@ -355,6 +355,17 @@ function ClaimDetail() {
           }}
         />
       )}
+      {adding && assessment && (
+        <AddLineItemDialog
+          onClose={() => setAdding(false)}
+          onSave={async (fields, rationale) => {
+            await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
+            setAdding(false);
+            refetchItems();
+            toast.success("Line item added");
+          }}
+        />
+      )}
     </div>
   );
 }
