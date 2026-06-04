@@ -8,6 +8,29 @@ function genClaimNumber() {
   return `CL-${new Date().getFullYear()}-${n}`;
 }
 
+// Treat null/undefined/"" as equivalent "no value" so clearing optional fields
+// does not pollute diffs with cosmetic changes.
+function normalizeForDiff(v: unknown): unknown {
+  if (v === undefined || v === null || v === "") return null;
+  return v;
+}
+
+function diffPatch(
+  before: Record<string, unknown> | null | undefined,
+  patch: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> {
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  if (!before) return changes;
+  for (const [key, toRaw] of Object.entries(patch)) {
+    if (toRaw === undefined) continue;
+    const from = normalizeForDiff(before[key]);
+    const to = normalizeForDiff(toRaw);
+    if (from === to) continue;
+    changes[key] = { from: before[key] ?? null, to: toRaw ?? null };
+  }
+  return changes;
+}
+
 const ImageModelEnum = z.enum([
   "google/gemini-3.1-flash-image-preview",
   "google/gemini-2.5-flash-image",
@@ -117,6 +140,19 @@ export const updateClaim = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const patchKeys = Object.keys(data.patch).filter(
+      (k) => (data.patch as Record<string, unknown>)[k] !== undefined,
+    );
+    const selectCols = patchKeys.length > 0 ? patchKeys.join(",") : "id";
+    const { data: before } = await supabaseAdmin
+      .from("claims")
+      .select(selectCols)
+      .eq("id", data.claimId)
+      .single();
+    const changes = diffPatch(before as Record<string, unknown> | null, data.patch);
+    if (Object.keys(changes).length === 0) {
+      return { ok: true, unchanged: true };
+    }
     const { error } = await supabaseAdmin
       .from("claims")
       .update(data.patch)
@@ -127,7 +163,7 @@ export const updateClaim = createServerFn({ method: "POST" })
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
-      details: { patch: data.patch } as never,
+      details: { changes, patch: data.patch } as never,
     });
     return { ok: true };
   });
@@ -187,6 +223,12 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { data: beforeImgs } = await supabaseAdmin
+      .from("claim_images")
+      .select("url, angle")
+      .eq("claim_id", data.claimId);
+    const fromList = (beforeImgs ?? []).map((i) => ({ url: i.url, angle: i.angle }));
+    const toList = data.images.map((i) => ({ url: i.url, angle: i.angle }));
     await supabaseAdmin.from("claim_images").delete().eq("claim_id", data.claimId);
     const { error } = await supabaseAdmin.from("claim_images").insert(
       data.images.map((img) => ({
@@ -203,7 +245,10 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_images_replaced",
-      details: { image_count: data.images.length } as never,
+      details: {
+        changes: { images: { from: fromList, to: toList } },
+        image_count: data.images.length,
+      } as never,
     });
     return { ok: true };
   });
@@ -246,12 +291,21 @@ export const editLineItem = createServerFn({ method: "POST" })
     const claimId = (before as { ai_assessments?: { claim_id?: string } } | null)?.ai_assessments
       ?.claim_id;
     if (claimId) {
+      const isRemoval = data.patch.is_deleted === true;
+      const changes = isRemoval
+        ? {}
+        : diffPatch(before as Record<string, unknown> | null, data.patch);
       await supabaseAdmin.from("audit_log").insert({
         claim_id: claimId,
         actor_user_id: context.userId,
         actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
-        action: data.patch.is_deleted ? "line_item_removed" : "line_item_edited",
-        details: { line_item_id: data.lineItemId, patch: data.patch, rationale: data.rationale } as never,
+        action: isRemoval ? "line_item_removed" : "line_item_edited",
+        details: {
+          line_item_id: data.lineItemId,
+          changes,
+          patch: data.patch,
+          rationale: data.rationale,
+        } as never,
       });
     }
     return { ok: true };
@@ -325,9 +379,13 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: a } = await supabaseAdmin
       .from("ai_assessments")
-      .select("claim_id")
+      .select("claim_id, summary")
       .eq("id", data.assessmentId)
       .single();
+    const fromSummary = a?.summary ?? "";
+    if (normalizeForDiff(fromSummary) === normalizeForDiff(data.summary)) {
+      return { ok: true, unchanged: true };
+    }
     const { error } = await supabaseAdmin
       .from("ai_assessments")
       .update({ summary: data.summary })
@@ -343,7 +401,9 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
             ? "adjuster"
             : "agent",
         action: "assessment_summary_edited",
-        details: { summary: data.summary } as never,
+        details: {
+          changes: { summary: { from: fromSummary, to: data.summary } },
+        } as never,
       });
     }
     return { ok: true };
