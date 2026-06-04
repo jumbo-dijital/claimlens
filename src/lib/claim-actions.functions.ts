@@ -169,6 +169,7 @@ export const updateClaim = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_updated",
       details: { changes, patch: data.patch } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
