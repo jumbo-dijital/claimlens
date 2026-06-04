@@ -514,6 +514,7 @@ export const setAssessmentFeedback = createServerFn({ method: "POST" })
             : "agent",
         action: "assessment_feedback_set",
         details: { changes: { feedback: { from, to } } } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
