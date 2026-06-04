@@ -123,11 +123,13 @@ export const analyzeClaim = createServerFn({ method: "POST" })
 
     let aiOutput: z.infer<typeof DamageSchema>;
     try {
-      const { experimental_output } = await generateText({
+      const { text } = await generateText({
         model,
-        experimental_output: Output.object({ schema: DamageSchema }),
         messages: [
-          { role: "system", content: sys },
+          {
+            role: "system",
+            content: `${sys}\n\nRespond with ONLY a JSON object. Use this exact shape: {"overall_confidence":0.0,"summary":"string","findings":[{"damage_type":"scratch|dent|crack|broken|missing|structural|other","location":"string","severity":"minor|moderate|severe","suggested_repair":"string","confidence":0.0,"rationale":"string"}],"image_quality_issues":["string"]}.`,
+          },
           {
             role: "user",
             content: [
@@ -140,7 +142,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
           },
         ],
       });
-      aiOutput = experimental_output;
+      aiOutput = normalizeAiOutput(extractJsonFromResponse(text));
     } catch (err) {
       await supabaseAdmin.from("claims").update({ status: "new" }).eq("id", data.claimId);
       const msg = err instanceof Error ? err.message : String(err);
