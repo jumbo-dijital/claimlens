@@ -415,6 +415,7 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
         details: {
           changes: { summary: { from: fromSummary, to: data.summary } },
         } as never,
+        ...getRequestAuditContext(),
       });
     }
     return { ok: true };
