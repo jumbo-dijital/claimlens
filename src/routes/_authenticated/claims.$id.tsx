@@ -171,10 +171,6 @@ function ClaimDetail() {
                 <Link to="/claims/$id/review" params={{ id }}>Review</Link>
               </Button>
             )}
-          <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
-            {assessment ? <RefreshCw className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {analyzing ? "Analyzing…" : assessment ? "Re-run AI analysis" : "Run AI analysis"}
-          </Button>
           {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
             <Button onClick={onSubmit}>
               <Send className="mr-2 h-4 w-4" />
