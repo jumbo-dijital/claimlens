@@ -532,9 +532,11 @@ function ClaimEditCard({
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
           </Button>
-          <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
+          {canDelete && (
+            <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          )}
         </div>
         <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <AlertDialogContent>
