@@ -403,6 +403,7 @@ function ClaimDetail() {
             await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
             setAdding(false);
             refetchItems();
+            refreshActivity();
             toast.success("Line item added");
           }}
         />
