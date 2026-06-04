@@ -379,9 +379,13 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: a } = await supabaseAdmin
       .from("ai_assessments")
-      .select("claim_id")
+      .select("claim_id, summary")
       .eq("id", data.assessmentId)
       .single();
+    const fromSummary = a?.summary ?? "";
+    if (normalizeForDiff(fromSummary) === normalizeForDiff(data.summary)) {
+      return { ok: true, unchanged: true };
+    }
     const { error } = await supabaseAdmin
       .from("ai_assessments")
       .update({ summary: data.summary })
@@ -397,7 +401,9 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
             ? "adjuster"
             : "agent",
         action: "assessment_summary_edited",
-        details: { summary: data.summary } as never,
+        details: {
+          changes: { summary: { from: fromSummary, to: data.summary } },
+        } as never,
       });
     }
     return { ok: true };
