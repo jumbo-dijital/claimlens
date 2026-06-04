@@ -1,71 +1,35 @@
 ## Goal
 
-Make manual uploads the primary way to add damage photos. Generation becomes a superadmin-only secondary action, gated off once any uploaded photo exists. Move generation settings into a modal and prerender placeholder tiles during generation.
+On the Damage photos grid, let users (a) delete an individual photo and (b) click any photo to view it full-size in a modal.
 
 ## Changes
 
-All work is in `src/routes/_authenticated/claims.$id.tsx` and `src/lib/claim-actions.functions.ts`. Images continue to be stored as base64 data URLs in `claim_images.url` (same pattern used today for generated images) — no storage bucket needed.
+### 1. Backend: `deleteClaimImage` server fn
 
-### 1. Backend: append-only upload server fn
+In `src/lib/claim-actions.functions.ts`, add `deleteClaimImage`:
 
-In `src/lib/claim-actions.functions.ts`, add `addClaimImages`:
+- Middleware: `requireRole("agent", "adjuster", "superadmin")`.
+- Input (zod): `{ claimImageId: z.string().uuid() }`.
+- Handler: fetch the row (to get `claim_id`, `angle`, `ai_generated` for the audit entry), delete by id via `supabaseAdmin`, and write an `audit_log` row with `action: "claim_image_deleted"`, `details: { angle, ai_generated }`, plus `...getRequestAuditContext()`.
 
-- Role: `agent`, `adjuster`, `superadmin` (everyone who can edit a claim).
-- Input: `{ claimId, images: [{ url, angle }] }` where `url` is a base64 data URL (size-bound the validator, e.g. each url ≤ ~10 MB worth of base64).
-- Inserts rows with `ai_generated: false`, `prompt: null`. Does NOT replace existing images.
-- Writes an `audit_log` entry `claim_images_uploaded` with the count.
+### 2. Frontend: delete + lightbox in `ImagePanel`
 
-Leave `replaceClaimImages` unchanged — generation still wipes and replaces.
+In `src/routes/_authenticated/claims.$id.tsx`:
 
-### 2. Upload UI (primary)
+- Import the new `deleteClaimImage` and wire `useServerFn` in `ClaimDetail`. Pass an `onDelete` handler into `ImagePanel` that calls it, then `refetchImages()` and `refreshActivity()`.
+- In `ImagePanel`:
+  - Add `lightbox` state holding the currently-expanded image (`{ url, angle } | null`). Saved images (non-live preview tiles) become clickable: the `<img>` is wrapped in a `<button type="button">` with `cursor-zoom-in` that opens the lightbox. Live in-flight generation previews are NOT clickable (no URL yet / mid-stream).
+  - Add a small delete button overlaid on the top-right of each saved image (icon-only `Button`, `Trash2` icon, `size="icon"`, semi-transparent background so it sits on the photo). Clicking it stops propagation, opens an `AlertDialog` confirming deletion, then calls `onDelete(image.id)`. Live preview tiles do not get a delete button.
+  - Render a `Dialog` (lightbox) that shows the full image (`max-h-[85vh] w-auto object-contain`) with the angle label below. Close by clicking outside or pressing Escape (default Dialog behavior).
 
-In `ImagePanel`, add an upload control as the primary action:
+`ClaimImageRow` already carries `id`, `url`, `angle` — no shape change needed.
 
-- A "Upload photos" `Button` (primary variant) that opens a hidden `<input type="file" accept="image/*" multiple />`.
-- For each selected file: read with `FileReader.readAsDataURL`, derive `angle` from the file name (fallback to "uploaded"), call the new `addClaimImages` fn.
-- Show a small inline spinner per pending upload and append to the grid as they resolve. Toast on completion or per-file failure.
-- Validate client-side: image MIME type, max file size (e.g. 10 MB).
+### 3. Generation gating stays correct
 
-### 3. Generation gating
-
-Compute `hasUploaded = images.some((i) => i.ai_generated === false)`.
-
-- Hide both "Generate images" and "Regenerate" buttons when `hasUploaded` is true.
-- Hide both for non-superadmin users regardless. Superadmin check: `me?.roles.includes('superadmin')`.
-- The "Run AI analysis" button on the assessment card is unrelated and stays as-is.
-
-### 4. Generation settings modal
-
-Replace the inline `renderGenControls` row with:
-
-- A secondary-styled "Generate images" button (outline variant, `Sparkles` icon) shown only to superadmins when no uploads exist.
-- A new `GenerateImagesDialog` with three fields:
-  - **Scene / setting** — `<Textarea rows={3}>`, persisted via `onUpdateClaim({ scene })` on change (same as today).
-  - **Image model** — same `Select` as today.
-  - **# of angles** — same `Select` as today.
-- Footer: "Cancel" and "Generate" buttons. Clicking Generate closes the modal and immediately runs the existing `run()` generation flow.
-
-The inline "Regenerate" button stays in the Damage photos card (outside the modal), shown only to superadmins and only when `!hasUploaded` and at least one generated image exists. Regenerate uses the persisted scene / model / angle count without reopening the modal.
-
-### 5. Prerender placeholder tiles during generation
-
-Refactor the generation loop in `run()`:
-
-- Before the loop, seed `previews` with `angleCount` placeholder entries (`{ angle, url: "", final: false, prompt: "" }`) so all tiles render immediately with their loading spinners.
-- Inside the loop, update the i-th entry in place (replace `setPreviews((p) => [...p, ...])` with the existing index-based update). Set `prompt` on the entry when it becomes known.
-- The grid already handles `loading: !p.url` — no change to the rendering branch.
-
-### 6. Layout
-
-Damage photos card body, in order:
-
-1. Photo grid (if any).
-2. Action row: "Upload photos" (primary) + "Generate images" (secondary, superadmin + no uploads) when the grid is empty or whenever there are no images; "Upload photos" + "Regenerate" (secondary, superadmin + no uploads) when generated images already exist.
-
-The empty state (no photos yet) shows the upload + generate buttons together so the user can choose.
+Deleting a user-uploaded photo can flip `hasUploaded` back to false, which restores the Generate/Regenerate buttons for superadmins. This falls out naturally from `images.some((i) => i.ai_generated === false)` recomputing after refetch — no extra work.
 
 ## Out of scope
 
-- No migration to a real storage bucket; keeping data URLs preserves the existing pattern.
-- No change to `replaceClaimImages`, `analyzeClaim`, or the assessment flow.
-- No backfill of `ai_generated` on existing rows (existing generated rows already have `ai_generated: true`).
+- No bulk-delete / multi-select.
+- No undo. Deletion is immediate after confirm.
+- No keyboard navigation between images in the lightbox (single-image view only).

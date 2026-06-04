@@ -308,6 +308,39 @@ export const addClaimImages = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const deleteClaimImage = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((input: unknown) =>
+    z.object({ claimImageId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error: readErr } = await supabaseAdmin
+      .from("claim_images")
+      .select("id, claim_id, angle, ai_generated")
+      .eq("id", data.claimImageId)
+      .single();
+    if (readErr || !row) throw new Error(readErr?.message ?? "Image not found");
+    const { error } = await supabaseAdmin
+      .from("claim_images")
+      .delete()
+      .eq("id", data.claimImageId);
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: row.claim_id,
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin")
+        ? "superadmin"
+        : context.roles.includes("adjuster")
+          ? "adjuster"
+          : "agent",
+      action: "claim_image_deleted",
+      details: { angle: row.angle, ai_generated: row.ai_generated } as never,
+      ...getRequestAuditContext(),
+    });
+    return { ok: true };
+  });
+
+
 export const editLineItem = createServerFn({ method: "POST" })
   .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((i: unknown) =>

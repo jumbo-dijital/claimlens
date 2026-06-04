@@ -45,6 +45,7 @@ import {
   deleteClaim,
   replaceClaimImages,
   addClaimImages,
+  deleteClaimImage,
   updateAssessmentSummary,
   addLineItem,
   setAssessmentFeedback,
@@ -90,6 +91,7 @@ function ClaimDetail() {
   const del = useServerFn(deleteClaim);
   const replaceImages = useServerFn(replaceClaimImages);
   const addImages = useServerFn(addClaimImages);
+  const removeImage = useServerFn(deleteClaimImage);
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
@@ -229,6 +231,11 @@ function ClaimDetail() {
               }}
               onUpload={async (imgs) => {
                 await addImages({ data: { claimId: id, images: imgs } });
+                await refetchImages();
+                refreshActivity();
+              }}
+              onDelete={async (claimImageId) => {
+                await removeImage({ data: { claimImageId } });
                 await refetchImages();
                 refreshActivity();
               }}
@@ -622,6 +629,7 @@ function ImagePanel({
   isSuperadmin,
   onReplace,
   onUpload,
+  onDelete,
   onUpdateClaim,
 }: {
   claim: ClaimRow;
@@ -629,6 +637,7 @@ function ImagePanel({
   isSuperadmin: boolean;
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
   onUpload: (imgs: { url: string; angle: string }[]) => Promise<void>;
+  onDelete: (claimImageId: string) => Promise<void>;
   onUpdateClaim: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const [generating, setGenerating] = useState(false);
@@ -636,6 +645,9 @@ function ImagePanel({
   const [genDialogOpen, setGenDialogOpen] = useState(false);
   const [previews, setPreviews] = useState<{ angle: string; url: string; final: boolean; prompt: string }[]>([]);
   const [shownPrompt, setShownPrompt] = useState<Record<string, boolean>>({});
+  const [lightbox, setLightbox] = useState<{ url: string; angle: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; angle: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const angleCount = claim.image_angle_count ?? 4;
   const hasUploaded = images.some((i) => i.ai_generated === false);
   const canGenerate = isSuperadmin && !hasUploaded;
@@ -716,6 +728,7 @@ function ImagePanel({
   const list = live
     ? previews.map((p, i) => ({
         key: `live-${i}`,
+        imageId: null as string | null,
         url: p.url,
         angle: p.angle,
         prompt: p.prompt,
@@ -724,6 +737,7 @@ function ImagePanel({
       }))
     : images.map((img) => ({
         key: img.id,
+        imageId: img.id,
         url: img.url,
         angle: img.angle,
         prompt: img.prompt ?? "",
@@ -772,14 +786,51 @@ function ImagePanel({
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <img
-                  src={p.url}
-                  alt={p.angle}
-                  className={
-                    "aspect-square w-full object-cover transition-[filter] duration-300 " +
-                    (p.blur ? "blur-md" : "blur-0")
-                  }
-                />
+                <div className="relative">
+                  {p.imageId ? (
+                    <button
+                      type="button"
+                      onClick={() => setLightbox({ url: p.url, angle: p.angle })}
+                      className="block w-full cursor-zoom-in"
+                      aria-label={`View ${p.angle} full size`}
+                    >
+                      <img
+                        src={p.url}
+                        alt={p.angle}
+                        className="aspect-square w-full object-cover"
+                      />
+                    </button>
+                  ) : (
+                    <img
+                      src={p.url}
+                      alt={p.angle}
+                      className={
+                        "aspect-square w-full object-cover transition-[filter] duration-300 " +
+                        (p.blur ? "blur-md" : "blur-0")
+                      }
+                    />
+                  )}
+                  {p.imageId && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute right-2 top-2 h-7 w-7 bg-background/80 backdrop-blur hover:bg-background"
+                      aria-label={`Delete ${p.angle}`}
+                      disabled={deletingId === p.imageId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ id: p.imageId!, angle: p.angle });
+                      }}
+                    >
+                      {deletingId === p.imageId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               )}
               <div className="flex items-center justify-between px-2 py-1 text-xs capitalize text-muted-foreground">
                 <span>{p.angle}</span>
@@ -837,6 +888,54 @@ function ImagePanel({
           }}
         />
       )}
+      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="capitalize">{lightbox?.angle ?? "Photo"}</DialogTitle>
+          </DialogHeader>
+          {lightbox && (
+            <img
+              src={lightbox.url}
+              alt={lightbox.angle}
+              className="mx-auto max-h-[80vh] w-auto object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removes the {confirmDelete?.angle} photo from this claim. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!confirmDelete) return;
+                const target = confirmDelete;
+                setDeletingId(target.id);
+                setConfirmDelete(null);
+                try {
+                  await onDelete(target.id);
+                  toast.success("Photo deleted");
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Delete failed");
+                } finally {
+                  setDeletingId(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
