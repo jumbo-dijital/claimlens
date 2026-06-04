@@ -258,13 +258,18 @@ function GeneratePage() {
               rows={3}
             />
           </div>
-          <Button onClick={runGenerate} disabled={generating} className="w-full">
-            {generating ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
-            ) : (
-              <><Sparkles className="mr-2 h-4 w-4" /> Generate damage photos + claim</>
-            )}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Button onClick={runGenerate} disabled={generating} className="w-full">
+              {generating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" /> Generate damage photos + claim</>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={resetForm} disabled={generating}>
+              <Eraser className="mr-2 h-4 w-4" /> Clear
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
