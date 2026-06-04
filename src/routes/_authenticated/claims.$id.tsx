@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
