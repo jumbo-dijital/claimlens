@@ -802,7 +802,7 @@ function SummaryEditor({
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        rows={3}
+        rows={5}
         placeholder="Assessment summary…"
         className="text-sm"
       />
