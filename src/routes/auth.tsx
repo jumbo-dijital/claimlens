@@ -14,11 +14,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const DEMO_ACCOUNTS = [
-  { email: "agent@claimlens.demo", role: "Claims Agent" },
-  { email: "adjuster@claimlens.demo", role: "Senior Adjuster" },
-  { email: "admin@claimlens.demo", role: "Superadmin" },
-];
 
 function AuthPage() {
   const router = useRouter();
