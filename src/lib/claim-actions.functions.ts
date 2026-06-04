@@ -223,6 +223,12 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { data: beforeImgs } = await supabaseAdmin
+      .from("claim_images")
+      .select("url, angle")
+      .eq("claim_id", data.claimId);
+    const fromList = (beforeImgs ?? []).map((i) => ({ url: i.url, angle: i.angle }));
+    const toList = data.images.map((i) => ({ url: i.url, angle: i.angle }));
     await supabaseAdmin.from("claim_images").delete().eq("claim_id", data.claimId);
     const { error } = await supabaseAdmin.from("claim_images").insert(
       data.images.map((img) => ({
@@ -239,7 +245,10 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
       action: "claim_images_replaced",
-      details: { image_count: data.images.length } as never,
+      details: {
+        changes: { images: { from: fromList, to: toList } },
+        image_count: data.images.length,
+      } as never,
     });
     return { ok: true };
   });
