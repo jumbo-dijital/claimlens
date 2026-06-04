@@ -256,6 +256,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
         changes: { images: { from: fromList, to: toList } },
         image_count: data.images.length,
       } as never,
+      ...getRequestAuditContext(),
     });
     return { ok: true };
   });
