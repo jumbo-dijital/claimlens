@@ -388,10 +388,12 @@ interface ClaimRow {
 
 function ClaimEditCard({
   claim,
+  canDelete,
   onSave,
   onDelete,
 }: {
   claim: ClaimRow;
+  canDelete: boolean;
   onSave: (patch: Record<string, unknown>) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
