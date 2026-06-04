@@ -2,17 +2,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 
-const BodySchema = z.object({
-  prompt: z.string().min(1).max(2000),
-});
+const ALLOWED_MODELS = [
+  "google/gemini-3.1-flash-image-preview",
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image-preview",
+] as const;
 
-const ALLOWED_MODEL = "google/gemini-3.1-flash-image-preview";
+const BodySchema = z.object({
+  prompt: z.string().min(1).max(4000),
+  model: z.enum(ALLOWED_MODELS).default("google/gemini-3.1-flash-image-preview"),
+});
 
 export const Route = createFileRoute("/api/generate-damage-image")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // 1. Authenticate
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
           return new Response("Unauthorized", { status: 401 });
@@ -27,7 +31,6 @@ export const Route = createFileRoute("/api/generate-damage-image")({
         }
         const userId = claims.claims.sub as string;
 
-        // 2. Authorize: superadmin only
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: roles } = await supabaseAdmin
           .from("user_roles")
@@ -37,7 +40,6 @@ export const Route = createFileRoute("/api/generate-damage-image")({
           return new Response("Forbidden", { status: 403 });
         }
 
-        // 3. Validate input
         let parsed: z.infer<typeof BodySchema>;
         try {
           parsed = BodySchema.parse(await request.json());
@@ -52,7 +54,7 @@ export const Route = createFileRoute("/api/generate-damage-image")({
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: ALLOWED_MODEL,
+            model: parsed.model,
             messages: [{ role: "user", content: parsed.prompt }],
             modalities: ["image", "text"],
             stream: true,
