@@ -655,6 +655,7 @@ function ImagePanel({
       />
       <Button
         asChild
+        variant="outline"
         disabled={uploading || generating}
       >
         <label htmlFor={uploadInputId} className="cursor-pointer">
@@ -751,7 +752,6 @@ function ImagePanel({
           {uploadButton}
           {canGenerate && images.length === 0 && (
             <Button
-              variant="outline"
               onClick={() => setGenDialogOpen(true)}
               disabled={generating}
             >
