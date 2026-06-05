@@ -1434,3 +1434,41 @@ function AuditTimeline({ claimId }: { claimId: string }) {
     </Card>
   );
 }
+
+function DeleteClaimButton({ onDelete }: { onDelete: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <>
+      <Button variant="destructive" onClick={() => setOpen(true)} disabled={deleting}>
+        <Trash2 className="mr-2 h-4 w-4" /> Delete
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this claim?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the claim and all its images, assessments, line items, and reviews. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await onDelete();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Delete failed");
+                  setDeleting(false);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
