@@ -64,13 +64,13 @@ function AuditPage() {
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {logs.map((l) => (
-              <div key={l.id} className="grid grid-cols-[180px_220px_180px_1fr] items-start gap-4 px-5 py-3 text-sm">
+              <div key={l.id} className="grid grid-cols-[180px_220px_180px_minmax(0,1fr)] items-start gap-4 px-5 py-3 text-sm">
                 <span className="text-xs text-muted-foreground">{formatDateTime(l.created_at)}</span>
-                <span className="font-mono text-xs">{l.action}</span>
-                <span className="text-xs">
+                <span className="font-mono text-xs break-words">{l.action}</span>
+                <span className="text-xs break-words">
                   {l.profiles?.display_name ?? "—"} <span className="text-muted-foreground">({l.actor_role})</span>
                 </span>
-                <span className="text-xs">
+                <div className="min-w-0 text-xs">
                   {l.claim_id ? (
                     <Link to="/claims/$id" params={{ id: l.claim_id }} className="font-mono hover:underline">
                       {l.claims?.claim_number ?? l.claim_id.slice(0, 8)}
@@ -80,10 +80,10 @@ function AuditPage() {
                   )}
                   {l.details ? (
                     <div className="text-muted-foreground mt-0.5 truncate">
-                      {JSON.stringify(l.details).slice(0, 120)}
+                      {JSON.stringify(l.details)}
                     </div>
                   ) : null}
-                </span>
+                </div>
               </div>
             ))}
             {logs.length === 0 && (
