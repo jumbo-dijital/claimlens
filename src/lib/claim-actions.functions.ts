@@ -554,6 +554,7 @@ export const addLineItem = createServerFn({ method: "POST" })
           labour_cost: z.number().min(0).max(1_000_000),
         }),
         rationale: z.string().min(3).max(1000),
+        estimateRationale: z.string().max(2000).optional(),
       })
       .parse(i),
   )
@@ -571,6 +572,7 @@ export const addLineItem = createServerFn({ method: "POST" })
         source: "agent",
         edited_by: context.userId,
         rationale: data.rationale,
+        estimate_rationale: data.estimateRationale || null,
       })
       .select()
       .single();
