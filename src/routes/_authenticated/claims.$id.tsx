@@ -102,6 +102,7 @@ function ClaimDetail() {
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
   const returnClaim = useServerFn(returnToAssessors);
+  const review = useServerFn(reviewClaim);
   const queryClient = useQueryClient();
   const refreshActivity = () =>
     queryClient.invalidateQueries({ queryKey: ["claim-audit", id] });
