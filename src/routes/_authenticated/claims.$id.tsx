@@ -752,7 +752,6 @@ function ImagePanel({
           {uploadButton}
           {canGenerate && images.length === 0 && (
             <Button
-              variant="outline"
               onClick={() => setGenDialogOpen(true)}
               disabled={generating}
             >
