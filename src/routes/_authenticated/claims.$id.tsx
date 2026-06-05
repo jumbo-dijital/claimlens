@@ -78,6 +78,7 @@ interface LineItem {
   confidence: number | null;
   source: string;
   rationale: string | null;
+  estimate_rationale: string | null;
   is_deleted: boolean;
 }
 
@@ -400,6 +401,12 @@ function ClaimDetail() {
                       {li.rationale && (
                         <div className="mt-1 text-xs italic text-muted-foreground">"{li.rationale}"</div>
                       )}
+                      {li.estimate_rationale && (
+                        <div className="mt-1 flex items-start gap-1 text-xs text-ai">
+                          <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>{li.estimate_rationale}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right text-sm">
                       <div>{formatCurrency(Number(li.part_cost) + Number(li.labour_cost))}</div>
@@ -482,8 +489,8 @@ function ClaimDetail() {
         <AddLineItemDialog
           claimId={id}
           onClose={() => setAdding(false)}
-          onSave={async (fields, rationale) => {
-            await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
+          onSave={async (fields, rationale, estimateRationale) => {
+            await addItem({ data: { assessmentId: assessment.id, fields, rationale, estimateRationale } });
             setAdding(false);
             refetchItems();
             refreshActivity();
@@ -1134,7 +1141,7 @@ function AddLineItemDialog({
 }: {
   claimId: string;
   onClose: () => void;
-  onSave: (fields: NewLineItemFields, rationale: string) => void;
+  onSave: (fields: NewLineItemFields, rationale: string, estimateRationale: string) => void;
 }) {
   const [repair, setRepair] = useState("");
   const [damageType, setDamageType] = useState("");
@@ -1144,6 +1151,7 @@ function AddLineItemDialog({
   const [partCost, setPartCost] = useState("0");
   const [hours, setHours] = useState("0");
   const [rationale, setRationale] = useState("");
+  const [estimateRationale, setEstimateRationale] = useState("");
   const [estimating, setEstimating] = useState(false);
   const estimateFn = useServerFn(estimateLineItemCost);
 
@@ -1175,8 +1183,8 @@ function AddLineItemDialog({
       setEstimate({ part_cost: result.part_cost, labour_hours: result.labour_hours });
       setPartCost(String(result.part_cost));
       setHours(String(result.labour_hours));
-      if (result.rationale) toast.success(`AI estimate: ${result.rationale}`);
-      else toast.success("AI estimate ready");
+      setEstimateRationale(result.rationale ?? "");
+      toast.success("AI estimate ready");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Estimate failed");
     } finally {
@@ -1239,16 +1247,26 @@ function AddLineItemDialog({
             </Button>
           </div>
           {estimate && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Part cost ($ USD)</Label>
-                <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Part cost ($ USD)</Label>
+                  <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Labour hours</Label>
+                  <Input value={hours} onChange={(e) => setHours(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Labour hours</Label>
-                <Input value={hours} onChange={(e) => setHours(e.target.value)} />
-              </div>
-            </div>
+              {estimateRationale && (
+                <div className="rounded-md border border-ai/30 bg-ai/5 p-3">
+                  <div className="mb-1 flex items-center gap-1 text-xs font-medium text-ai">
+                    <Sparkles className="h-3 w-3" /> AI reasoning
+                  </div>
+                  <div className="text-xs text-muted-foreground">{estimateRationale}</div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -1270,6 +1288,7 @@ function AddLineItemDialog({
                   labour_cost: hoursNum * 95,
                 },
                 rationale,
+                estimateRationale,
               );
             }}
           >

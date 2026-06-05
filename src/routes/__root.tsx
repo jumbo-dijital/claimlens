@@ -136,7 +136,7 @@ function RootComponent() {
         <main className="mx-auto max-w-[1400px] px-6 py-6">
           <Outlet />
         </main>
-        <Toaster richColors closeButton position="top-right" />
+        <Toaster richColors closeButton position="top-right" duration={8000} />
       </div>
     </QueryClientProvider>
   );

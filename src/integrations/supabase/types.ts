@@ -78,6 +78,7 @@ export type Database = {
           created_at: string
           damage_type: string
           edited_by: string | null
+          estimate_rationale: string | null
           evidence_image_id: string | null
           id: string
           is_deleted: boolean
@@ -96,6 +97,7 @@ export type Database = {
           created_at?: string
           damage_type: string
           edited_by?: string | null
+          estimate_rationale?: string | null
           evidence_image_id?: string | null
           id?: string
           is_deleted?: boolean
@@ -114,6 +116,7 @@ export type Database = {
           created_at?: string
           damage_type?: string
           edited_by?: string | null
+          estimate_rationale?: string | null
           evidence_image_id?: string | null
           id?: string
           is_deleted?: boolean
