@@ -71,12 +71,14 @@ function ClaimsQueuePage() {
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <Button asChild>
-          <Link to="/claims/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New claim
-          </Link>
-        </Button>
+        {isSuperadmin && (
+          <Button asChild>
+            <Link to="/claims/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New claim
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Card>

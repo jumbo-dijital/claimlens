@@ -1,6 +1,6 @@
-import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
@@ -15,12 +15,6 @@ import { generateSyntheticClaimDetails } from "@/lib/generate-claim-details.func
 
 export const Route = createFileRoute("/_authenticated/claims/new")({
   head: () => ({ meta: [{ title: "New claim — ClaimLens" }] }),
-  beforeLoad: ({ context }) => {
-    const roles = (context as { user?: { roles?: string[] } }).user?.roles ?? [];
-    if (!roles.includes("superadmin")) {
-      throw redirect({ to: "/" });
-    }
-  },
   component: NewClaimPage,
 });
 
