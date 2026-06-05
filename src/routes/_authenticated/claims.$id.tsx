@@ -593,22 +593,24 @@ function ImagePanel({
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
 
-      const finals: { url: string; angle: string; prompt: string }[] = [];
-      for (const [i, angle] of angles.entries()) {
-        const prompt = buildDamagePrompt(angle, claim);
-        const finalUrl = await streamImage(
-          "/api/generate-damage-image",
-          { prompt, model: claim.image_model ?? "google/gemini-3.1-flash-image-preview" },
-          (dataUrl, isFinal) => {
-            setPreviews((p) =>
-              p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
-            );
-          },
-          { Authorization: `Bearer ${token}` },
-        );
-        finals.push({ url: finalUrl, angle, prompt });
-      }
+      const finals = await Promise.all(
+        angles.map(async (angle, i) => {
+          const prompt = buildDamagePrompt(angle, claim);
+          const finalUrl = await streamImage(
+            "/api/generate-damage-image",
+            { prompt, model: claim.image_model ?? "google/gemini-3.1-flash-image-preview" },
+            (dataUrl, isFinal) => {
+              setPreviews((p) =>
+                p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
+              );
+            },
+            { Authorization: `Bearer ${token}` },
+          );
+          return { url: finalUrl, angle, prompt };
+        }),
+      );
       await onReplace(finals);
+
       setPreviews([]);
       toast.success("Images saved");
     } catch (e) {
