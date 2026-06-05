@@ -1141,7 +1141,7 @@ function AddLineItemDialog({
 }: {
   claimId: string;
   onClose: () => void;
-  onSave: (fields: NewLineItemFields, rationale: string) => void;
+  onSave: (fields: NewLineItemFields, rationale: string, estimateRationale: string) => void;
 }) {
   const [repair, setRepair] = useState("");
   const [damageType, setDamageType] = useState("");
@@ -1151,6 +1151,7 @@ function AddLineItemDialog({
   const [partCost, setPartCost] = useState("0");
   const [hours, setHours] = useState("0");
   const [rationale, setRationale] = useState("");
+  const [estimateRationale, setEstimateRationale] = useState("");
   const [estimating, setEstimating] = useState(false);
   const estimateFn = useServerFn(estimateLineItemCost);
 
@@ -1182,8 +1183,8 @@ function AddLineItemDialog({
       setEstimate({ part_cost: result.part_cost, labour_hours: result.labour_hours });
       setPartCost(String(result.part_cost));
       setHours(String(result.labour_hours));
-      if (result.rationale) toast.success(`AI estimate: ${result.rationale}`);
-      else toast.success("AI estimate ready");
+      setEstimateRationale(result.rationale ?? "");
+      toast.success("AI estimate ready");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Estimate failed");
     } finally {
