@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare, Check, X } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
