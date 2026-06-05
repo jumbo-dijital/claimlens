@@ -232,7 +232,7 @@ function ClaimDetail() {
 
 
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
+      <div className="space-y-6">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Damage photos ({images.length})</CardTitle>
