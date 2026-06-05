@@ -661,9 +661,9 @@ function ImagePanel({
       <Button
         asChild
         variant="outline"
-        disabled={uploading || generating}
+        disabled={uploading || generating || hasAssessment}
       >
-        <label htmlFor={uploadInputId} className="cursor-pointer">
+        <label htmlFor={uploadInputId} className={hasAssessment ? "" : "cursor-pointer"}>
           {uploading ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…</>
           ) : (
