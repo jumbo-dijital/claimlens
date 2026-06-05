@@ -51,6 +51,7 @@ import {
   setAssessmentFeedback,
   estimateLineItemCost,
 } from "@/lib/claim-actions.functions";
+import { ClaimDetailsForm } from "@/components/claim-details-form";
 
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
