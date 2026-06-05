@@ -752,7 +752,7 @@ function ImagePanel({
           ))}
         </div>
       )}
-      {!live && (
+      {!live && !hasAssessment && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {uploadButton}
           {canGenerate && images.length === 0 && (
