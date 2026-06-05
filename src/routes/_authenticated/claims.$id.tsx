@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { type ReactNode, useEffect, useState } from "react";
@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare, Check, X } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -52,6 +52,7 @@ import {
   estimateLineItemCost,
   returnToAssessors,
   addClaimComment,
+  reviewClaim,
 } from "@/lib/claim-actions.functions";
 import { ClaimDetailsForm } from "@/components/claim-details-form";
 import { ClaimProgressStepper } from "@/components/claim-progress-stepper";
@@ -101,6 +102,7 @@ function ClaimDetail() {
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
   const returnClaim = useServerFn(returnToAssessors);
+  const review = useServerFn(reviewClaim);
   const queryClient = useQueryClient();
   const refreshActivity = () =>
     queryClient.invalidateQueries({ queryKey: ["claim-audit", id] });
@@ -192,9 +194,6 @@ function ClaimDetail() {
           {(me?.roles.includes("adjuster") || isSuperadmin) &&
             claim.status === "submitted" && (
               <>
-                <Button asChild variant="secondary">
-                  <Link to="/claims/$id/review" params={{ id }}>Review</Link>
-                </Button>
                 <ReturnToAssessorsButton
                   onConfirm={async (comment) => {
                     await returnClaim({ data: { claimId: id, comment } });
@@ -203,6 +202,30 @@ function ClaimDetail() {
                     refreshActivity();
                   }}
                 />
+                <Button
+                  className="bg-success text-success-foreground hover:bg-success/90"
+                  onClick={async () => {
+                    await review({ data: { claimId: id, decision: "approve", comment: "" } });
+                    toast.success("Claim approved");
+                    await refetchClaim();
+                    refreshActivity();
+                  }}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    await review({ data: { claimId: id, decision: "reject", comment: "" } });
+                    toast.success("Claim rejected");
+                    await refetchClaim();
+                    refreshActivity();
+                  }}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Reject
+                </Button>
               </>
             )}
           {assessment && claim.status !== "submitted" && claim.status !== "approved" && claim.status !== "rejected" && (
@@ -211,17 +234,9 @@ function ClaimDetail() {
               Submit for approval
             </Button>
           )}
-          {isSuperadmin && (
-            <DeleteClaimButton
-              onDelete={async () => {
-                await del({ data: { claimId: id } });
-                toast.success("Claim deleted");
-                router.navigate({ to: "/" });
-              }}
-            />
-          )}
         </div>
       </div>
+
 
       <ClaimProgressStepper status={claim.status} />
 
@@ -478,6 +493,18 @@ function ClaimDetail() {
       )}
 
       <AuditTimeline claimId={id} />
+
+      {isSuperadmin && (
+        <div className="flex justify-end pt-12">
+          <DeleteClaimButton
+            onDelete={async () => {
+              await del({ data: { claimId: id } });
+              toast.success("Claim deleted");
+              router.navigate({ to: "/" });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
