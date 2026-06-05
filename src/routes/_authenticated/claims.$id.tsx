@@ -401,6 +401,12 @@ function ClaimDetail() {
                       {li.rationale && (
                         <div className="mt-1 text-xs italic text-muted-foreground">"{li.rationale}"</div>
                       )}
+                      {li.estimate_rationale && (
+                        <div className="mt-1 flex items-start gap-1 text-xs text-ai">
+                          <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>{li.estimate_rationale}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right text-sm">
                       <div>{formatCurrency(Number(li.part_cost) + Number(li.labour_cost))}</div>
