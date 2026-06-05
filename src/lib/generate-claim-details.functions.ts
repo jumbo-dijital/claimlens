@@ -116,3 +116,63 @@ Respond with ONLY a JSON object (no markdown, no commentary) with exactly these 
       throw new Error(`Claim generation failed: ${msg}`);
     }
   });
+
+export const generateSyntheticScene = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        vehicle_year: z.number().int().optional(),
+        vehicle_make: z.string().max(60).optional(),
+        vehicle_model: z.string().max(60).optional(),
+        impact_area: z.string().max(160).optional(),
+        damage_severity: z.enum(["minor", "moderate", "severe"]).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const gateway = createLovableAiGatewayProvider(apiKey);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const seed = pick(SCENES);
+    const vehicleBits = [data.vehicle_year, data.vehicle_make, data.vehicle_model]
+      .filter(Boolean)
+      .join(" ");
+    const context = [
+      vehicleBits ? `vehicle: ${vehicleBits}` : null,
+      data.impact_area ? `impact area: ${data.impact_area}` : null,
+      data.damage_severity ? `damage severity: ${data.damage_severity}` : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
+
+    const sys = `You write short, vivid one-sentence scene descriptions for staged auto-insurance damage photos in a QA/demo environment.`;
+    const userPrompt = `Expand this scene seed into ONE concise sentence (no more than 25 words) with concrete lighting, weather, and surroundings, suitable as a photo-shoot backdrop.
+
+Scene seed: ${seed}
+${context ? `Context: ${context}` : ""}
+
+Respond with ONLY the sentence — no quotes, no preamble, no JSON.`;
+
+    try {
+      const { text } = await generateText({
+        model,
+        temperature: 0.9,
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: userPrompt },
+        ],
+      });
+      const scene = text.trim().replace(/^["']|["']$/g, "").slice(0, 400);
+      return { scene };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("429")) throw new Error("AI rate limit reached. Please wait and try again.");
+      if (msg.includes("402")) throw new Error("AI credits exhausted. Add credits in Workspace settings.");
+      throw new Error(`Scene generation failed: ${msg}`);
+    }
+  });
+
