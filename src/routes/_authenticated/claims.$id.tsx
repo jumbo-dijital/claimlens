@@ -194,9 +194,6 @@ function ClaimDetail() {
           {(me?.roles.includes("adjuster") || isSuperadmin) &&
             claim.status === "submitted" && (
               <>
-                <Button asChild variant="secondary">
-                  <Link to="/claims/$id/review" params={{ id }}>Review</Link>
-                </Button>
                 <ReturnToAssessorsButton
                   onConfirm={async (comment) => {
                     await returnClaim({ data: { claimId: id, comment } });
@@ -205,6 +202,30 @@ function ClaimDetail() {
                     refreshActivity();
                   }}
                 />
+                <Button
+                  className="bg-success text-success-foreground hover:bg-success/90"
+                  onClick={async () => {
+                    await review({ data: { claimId: id, decision: "approve", comment: "" } });
+                    toast.success("Claim approved");
+                    await refetchClaim();
+                    refreshActivity();
+                  }}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    await review({ data: { claimId: id, decision: "reject", comment: "" } });
+                    toast.success("Claim rejected");
+                    await refetchClaim();
+                    refreshActivity();
+                  }}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Reject
+                </Button>
               </>
             )}
           {assessment && claim.status !== "submitted" && claim.status !== "approved" && claim.status !== "rejected" && (
@@ -213,17 +234,9 @@ function ClaimDetail() {
               Submit for approval
             </Button>
           )}
-          {isSuperadmin && (
-            <DeleteClaimButton
-              onDelete={async () => {
-                await del({ data: { claimId: id } });
-                toast.success("Claim deleted");
-                router.navigate({ to: "/" });
-              }}
-            />
-          )}
         </div>
       </div>
+
 
       <ClaimProgressStepper status={claim.status} />
 
