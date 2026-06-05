@@ -258,6 +258,7 @@ function ClaimDetail() {
               claim={claim}
               images={images}
               isSuperadmin={isSuperadmin}
+              hasAssessment={!!assessment}
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
@@ -522,6 +523,7 @@ function ImagePanel({
   claim,
   images,
   isSuperadmin,
+  hasAssessment,
   onReplace,
   onUpload,
   onDelete,
@@ -530,6 +532,7 @@ function ImagePanel({
   claim: ClaimRow;
   images: ClaimImageRow[];
   isSuperadmin: boolean;
+  hasAssessment: boolean;
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
   onUpload: (imgs: { url: string; angle: string }[]) => Promise<void>;
   onDelete: (claimImageId: string) => Promise<void>;
@@ -545,7 +548,7 @@ function ImagePanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const angleCount = claim.image_angle_count ?? 4;
   const hasUploaded = images.some((i) => i.ai_generated === false);
-  const canGenerate = isSuperadmin && !hasUploaded;
+  const canGenerate = isSuperadmin && !hasUploaded && !hasAssessment;
 
   const run = async () => {
     if (!claim.paint_color || !claim.scene || !claim.impact_area) {
@@ -658,9 +661,9 @@ function ImagePanel({
       <Button
         asChild
         variant="outline"
-        disabled={uploading || generating}
+        disabled={uploading || generating || hasAssessment}
       >
-        <label htmlFor={uploadInputId} className="cursor-pointer">
+        <label htmlFor={uploadInputId} className={hasAssessment ? "" : "cursor-pointer"}>
           {uploading ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…</>
           ) : (
@@ -706,7 +709,7 @@ function ImagePanel({
                       }
                     />
                   )}
-                  {p.imageId && (
+                  {p.imageId && !hasAssessment && (
                     <Button
                       type="button"
                       size="icon"
