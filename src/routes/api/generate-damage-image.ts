@@ -11,6 +11,10 @@ const ALLOWED_MODELS = [
 const BodySchema = z.object({
   prompt: z.string().min(1).max(4000),
   model: z.enum(ALLOWED_MODELS).default("google/gemini-3.1-flash-image-preview"),
+  referenceImages: z
+    .array(z.string().regex(/^data:image\/(png|jpeg|webp);base64,/).max(15_000_000))
+    .max(4)
+    .optional(),
 });
 
 export const Route = createFileRoute("/api/generate-damage-image")({
@@ -50,12 +54,19 @@ export const Route = createFileRoute("/api/generate-damage-image")({
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
+        const content: Array<
+          { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+        > = [{ type: "text", text: parsed.prompt }];
+        for (const url of parsed.referenceImages ?? []) {
+          content.push({ type: "image_url", image_url: { url } });
+        }
+
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: parsed.model,
-            messages: [{ role: "user", content: parsed.prompt }],
+            messages: [{ role: "user", content }],
             modalities: ["image", "text"],
             stream: true,
           }),
