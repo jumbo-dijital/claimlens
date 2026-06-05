@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, FileQuestion, ScanEye } from "lucide-react";
+import { ArrowRight, FileQuestion, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
