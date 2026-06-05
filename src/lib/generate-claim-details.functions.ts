@@ -138,22 +138,16 @@ export const generateSyntheticScene = createServerFn({ method: "POST" })
     const model = gateway("google/gemini-3-flash-preview");
 
     const seed = pick(SCENES);
-    const vehicleBits = [data.vehicle_year, data.vehicle_make, data.vehicle_model]
-      .filter(Boolean)
-      .join(" ");
-    const context = [
-      vehicleBits ? `vehicle: ${vehicleBits}` : null,
-      data.impact_area ? `impact area: ${data.impact_area}` : null,
-      data.damage_severity ? `damage severity: ${data.damage_severity}` : null,
-    ]
-      .filter(Boolean)
-      .join("; ");
 
-    const sys = `You write short, vivid one-sentence scene descriptions for staged auto-insurance damage photos in a QA/demo environment.`;
-    const userPrompt = `Expand this scene seed into ONE concise sentence (no more than 25 words) with concrete lighting, weather, and surroundings, suitable as a photo-shoot backdrop.
+    const sys = `You write short, vivid one-sentence scene descriptions for staged auto-insurance damage photos in a QA/demo environment. The sentence describes ONLY the environment/backdrop — never the vehicle, its make/model/color, or any damage.`;
+    const userPrompt = `Expand this scene seed into ONE concise sentence (no more than 25 words) describing ONLY the location, lighting, weather, and surroundings — as a photo-shoot backdrop with no car in frame yet.
 
 Scene seed: ${seed}
-${context ? `Context: ${context}` : ""}
+
+Strict rules:
+- Do NOT mention any vehicle, car, make, model, year, color, paint, or damage.
+- Do NOT mention people.
+- Describe the place only (surface, structures, lighting, weather, time of day).
 
 Respond with ONLY the sentence — no quotes, no preamble, no JSON.`;
 
