@@ -548,7 +548,7 @@ function ImagePanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const angleCount = claim.image_angle_count ?? 4;
   const hasUploaded = images.some((i) => i.ai_generated === false);
-  const canGenerate = isSuperadmin && !hasUploaded;
+  const canGenerate = isSuperadmin && !hasUploaded && !hasAssessment;
 
   const run = async () => {
     if (!claim.paint_color || !claim.scene || !claim.impact_area) {
