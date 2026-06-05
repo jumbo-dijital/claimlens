@@ -34,7 +34,7 @@ function NewClaimPage() {
       const d = await generate();
       setAiSeed({
         policyholder_name: d.policyholder_name,
-        policy_number: "",
+        policy_number: `POL-${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`,
         vehicle_make: d.vehicle_make,
         vehicle_model: d.vehicle_model,
         vehicle_year: d.vehicle_year,
