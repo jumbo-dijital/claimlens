@@ -523,6 +523,7 @@ function ImagePanel({
   claim,
   images,
   isSuperadmin,
+  hasAssessment,
   onReplace,
   onUpload,
   onDelete,
@@ -531,6 +532,7 @@ function ImagePanel({
   claim: ClaimRow;
   images: ClaimImageRow[];
   isSuperadmin: boolean;
+  hasAssessment: boolean;
   onReplace: (imgs: { url: string; angle: string; prompt: string }[]) => Promise<void>;
   onUpload: (imgs: { url: string; angle: string }[]) => Promise<void>;
   onDelete: (claimImageId: string) => Promise<void>;
