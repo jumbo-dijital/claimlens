@@ -77,25 +77,39 @@ function AuditPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_log")
-        .select("*, claims(claim_number)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw new Error(error.message);
       const rows = (data ?? []) as unknown as AuditRow[];
+
       const actorIds = Array.from(
         new Set(rows.map((r) => r.actor_user_id).filter(Boolean) as string[]),
       );
-      if (actorIds.length === 0) return rows;
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name")
-        .in("id", actorIds);
-      const byId = new Map(
-        (profiles ?? []).map((p) => [p.id, { display_name: p.display_name ?? undefined }]),
+      const claimIds = Array.from(
+        new Set(rows.map((r) => r.claim_id).filter(Boolean) as string[]),
       );
+
+      const [profilesRes, claimsRes] = await Promise.all([
+        actorIds.length
+          ? supabase.from("profiles").select("id, display_name").in("id", actorIds)
+          : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
+        claimIds.length
+          ? supabase.from("claims").select("id, claim_number").in("id", claimIds)
+          : Promise.resolve({ data: [] as { id: string; claim_number: string | null }[] }),
+      ]);
+
+      const profileById = new Map(
+        (profilesRes.data ?? []).map((p) => [p.id, { display_name: p.display_name ?? undefined }]),
+      );
+      const claimById = new Map(
+        (claimsRes.data ?? []).map((c) => [c.id, { claim_number: c.claim_number ?? undefined }]),
+      );
+
       return rows.map((r) => ({
         ...r,
-        profiles: r.actor_user_id ? (byId.get(r.actor_user_id) ?? null) : null,
+        profiles: r.actor_user_id ? (profileById.get(r.actor_user_id) ?? null) : null,
+        claims: r.claim_id ? (claimById.get(r.claim_id) ?? null) : null,
       }));
     },
   });
