@@ -655,6 +655,7 @@ function ImagePanel({
       />
       <Button
         asChild
+        variant="outline"
         disabled={uploading || generating}
       >
         <label htmlFor={uploadInputId} className="cursor-pointer">
