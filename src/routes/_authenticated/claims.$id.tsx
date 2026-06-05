@@ -198,21 +198,36 @@ function ClaimDetail() {
         </div>
       </div>
 
-      <ClaimEditCard
-        claim={claim}
-        canDelete={isSuperadmin}
+      <ClaimDetailsForm
+        initial={{
+          policyholder_name: claim.policyholder_name ?? "",
+          policy_number: claim.policy_number ?? "",
+          vehicle_make: claim.vehicle_make ?? "",
+          vehicle_model: claim.vehicle_model ?? "",
+          vehicle_year: claim.vehicle_year ?? new Date().getFullYear(),
+          vehicle_class: (claim.vehicle_class as "standard" | "premium") ?? "standard",
+          damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
+          paint_color: claim.paint_color ?? "",
+          impact_area: claim.impact_area ?? "",
+          incident_description: claim.incident_description ?? "",
+        }}
         onSave={async (patch) => {
           await update({ data: { claimId: id, patch } });
           await refetchClaim();
           refreshActivity();
           toast.success("Claim updated");
         }}
-        onDelete={async () => {
-          await del({ data: { claimId: id } });
-          toast.success("Claim deleted");
-          router.navigate({ to: "/" });
-        }}
+        onDelete={
+          isSuperadmin
+            ? async () => {
+                await del({ data: { claimId: id } });
+                toast.success("Claim deleted");
+                router.navigate({ to: "/" });
+              }
+            : undefined
+        }
       />
+
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card>
