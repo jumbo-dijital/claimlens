@@ -12,6 +12,10 @@ export const Route = createFileRoute("/_authenticated/audit")({
 
 function AuditLogRow({ log }: { log: AuditRow }) {
   const [expanded, setExpanded] = useState(false);
+  const details = (log.details ?? {}) as Record<string, unknown>;
+  const commentText =
+    log.action === "comment" && typeof details.text === "string" ? details.text : null;
+  const comment = typeof details.comment === "string" ? details.comment : null;
   return (
     <div className="grid grid-cols-[180px_220px_180px_minmax(0,1fr)] items-start gap-4 px-5 py-3 text-sm">
       <span className="text-xs text-muted-foreground">{formatDateTime(log.created_at)}</span>
@@ -19,13 +23,21 @@ function AuditLogRow({ log }: { log: AuditRow }) {
       <span className="text-xs break-words">
         {log.profiles?.display_name ?? "—"} <span className="text-muted-foreground">({log.actor_role})</span>
       </span>
-      <div className="min-w-0 text-xs">
+      <div className="min-w-0 text-xs space-y-1">
         {log.claim_id ? (
           <Link to="/claims/$id" params={{ id: log.claim_id }} className="font-mono hover:underline">
             {log.claims?.claim_number ?? log.claim_id.slice(0, 8)}
           </Link>
         ) : (
           "—"
+        )}
+        {commentText && (
+          <div className="rounded-md border border-border bg-yellow-50 px-3 py-2 text-sm whitespace-pre-wrap">
+            {commentText}
+          </div>
+        )}
+        {comment && !commentText && (
+          <div className="text-xs italic text-muted-foreground">"{comment}"</div>
         )}
         {log.details ? (
           <div className="mt-1">
