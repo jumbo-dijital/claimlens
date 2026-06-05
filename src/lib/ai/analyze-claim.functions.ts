@@ -215,7 +215,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("claims").update({ status: "in_review" }).eq("id", data.claimId);
 
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: "system",

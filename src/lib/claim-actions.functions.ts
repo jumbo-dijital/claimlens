@@ -94,7 +94,7 @@ export const createClaim = createServerFn({ method: "POST" })
         ? "adjuster"
         : "agent";
 
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: claim.id,
       actor_user_id: context.userId,
       actor_role: actorRole,
@@ -149,7 +149,7 @@ export const updateClaim = createServerFn({ method: "POST" })
       .update(data.patch)
       .eq("id", data.claimId);
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
@@ -185,7 +185,7 @@ export const deleteClaim = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("claims").delete().eq("id", data.claimId);
     if (error) throw new Error(error.message);
     // audit_log row referencing this claim_id would FK-fail after delete; log a fresh row without claim_id
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: null,
       actor_user_id: context.userId,
       actor_role: "superadmin",
@@ -233,7 +233,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
       })),
     );
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
@@ -276,7 +276,7 @@ export const addClaimImages = createServerFn({ method: "POST" })
       })),
     );
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin")
@@ -311,7 +311,7 @@ export const deleteClaimImage = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.claimImageId);
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: row.claim_id,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin")
@@ -369,7 +369,7 @@ export const editLineItem = createServerFn({ method: "POST" })
       const changes = isRemoval
         ? {}
         : diffPatch(before as Record<string, unknown> | null, data.patch);
-      await supabaseAdmin.from("audit_log").insert({
+      await insertAuditLog({
         claim_id: claimId,
         actor_user_id: context.userId,
         actor_role: context.roles.includes("superadmin") ? "superadmin" : context.roles.includes("adjuster") ? "adjuster" : "agent",
@@ -394,7 +394,7 @@ export const submitForApproval = createServerFn({ method: "POST" })
       .from("claims")
       .update({ status: "submitted" })
       .eq("id", data.claimId);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "agent",
@@ -431,7 +431,7 @@ export const reviewClaim = createServerFn({ method: "POST" })
       decision: data.decision,
       comment: data.comment,
     });
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
@@ -457,7 +457,7 @@ export const returnToAssessors = createServerFn({ method: "POST" })
       .from("claims")
       .update({ status: "in_review" })
       .eq("id", data.claimId);
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
@@ -479,7 +479,7 @@ export const addClaimComment = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: context.roles.includes("superadmin")
@@ -520,7 +520,7 @@ export const updateAssessmentSummary = createServerFn({ method: "POST" })
       .eq("id", data.assessmentId);
     if (error) throw new Error(error.message);
     if (a?.claim_id) {
-      await supabaseAdmin.from("audit_log").insert({
+      await insertAuditLog({
         claim_id: a.claim_id,
         actor_user_id: context.userId,
         actor_role: context.roles.includes("superadmin")
@@ -578,7 +578,7 @@ export const addLineItem = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     if (a?.claim_id) {
-      await supabaseAdmin.from("audit_log").insert({
+      await insertAuditLog({
         claim_id: a.claim_id,
         actor_user_id: context.userId,
         actor_role: context.roles.includes("superadmin")
@@ -623,7 +623,7 @@ export const setAssessmentFeedback = createServerFn({ method: "POST" })
       .eq("id", data.assessmentId);
     if (error) throw new Error(error.message);
     if (a?.claim_id) {
-      await supabaseAdmin.from("audit_log").insert({
+      await insertAuditLog({
         claim_id: a.claim_id,
         actor_user_id: context.userId,
         actor_role: context.roles.includes("superadmin")
