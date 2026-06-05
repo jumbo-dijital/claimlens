@@ -862,7 +862,7 @@ function ImagePanel({
               onClick={() => setGenDialogOpen(true)}
               disabled={generating}
             >
-              <Sparkles className="mr-2 h-4 w-4" /> Generate images
+              <Sparkles className="mr-2 h-4 w-4" /> Demo: Generate photos
             </Button>
           )}
           {canGenerate && images.length > 0 && (
@@ -870,7 +870,7 @@ function ImagePanel({
               {generating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
               ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+                <><Sparkles className="mr-2 h-4 w-4" /> Demo: Regenerate</>
               )}
             </Button>
           )}
