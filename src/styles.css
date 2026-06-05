@@ -71,6 +71,8 @@
   --warning-foreground: oklch(0.2 0.04 75);
   --info: oklch(0.6 0.15 230);
   --info-foreground: oklch(0.99 0 0);
+  --ai: oklch(0.55 0.22 300);
+  --ai-foreground: oklch(0.99 0 0);
   --border: oklch(0.91 0.012 250);
   --input: oklch(0.91 0.012 250);
   --ring: oklch(0.45 0.18 255);
