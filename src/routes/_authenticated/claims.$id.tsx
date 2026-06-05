@@ -258,6 +258,7 @@ function ClaimDetail() {
               claim={claim}
               images={images}
               isSuperadmin={isSuperadmin}
+              hasAssessment={!!assessment}
               onReplace={async (imgs) => {
                 await replaceImages({ data: { claimId: id, images: imgs } });
                 await refetchImages();
