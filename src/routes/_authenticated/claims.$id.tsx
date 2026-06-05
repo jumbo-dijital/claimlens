@@ -489,8 +489,8 @@ function ClaimDetail() {
         <AddLineItemDialog
           claimId={id}
           onClose={() => setAdding(false)}
-          onSave={async (fields, rationale) => {
-            await addItem({ data: { assessmentId: assessment.id, fields, rationale } });
+          onSave={async (fields, rationale, estimateRationale) => {
+            await addItem({ data: { assessmentId: assessment.id, fields, rationale, estimateRationale } });
             setAdding(false);
             refetchItems();
             refreshActivity();
