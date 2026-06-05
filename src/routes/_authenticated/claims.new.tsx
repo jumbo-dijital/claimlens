@@ -82,6 +82,17 @@ function NewClaimPage() {
           ) : null
         }
         onSave={async (values) => {
+          const missing: string[] = [];
+          if (!values.policyholder_name.trim()) missing.push("Policyholder name");
+          if (!values.vehicle_make.trim()) missing.push("Vehicle make");
+          if (!values.vehicle_model.trim()) missing.push("Vehicle model");
+          if (values.vehicle_year === "") missing.push("Year");
+          if (values.vehicle_class === "") missing.push("Vehicle class");
+          if (values.damage_severity === "") missing.push("Damage severity");
+          if (missing.length > 0) {
+            toast.error(`Please fill in: ${missing.join(", ")}`);
+            return;
+          }
           const res = await create({
             data: { ...values, demoGenerated: demoUsed },
           });
