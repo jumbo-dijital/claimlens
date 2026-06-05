@@ -709,7 +709,7 @@ function ImagePanel({
                       }
                     />
                   )}
-                  {p.imageId && (
+                  {p.imageId && !hasAssessment && (
                     <Button
                       type="button"
                       size="icon"
