@@ -15,20 +15,16 @@ export const formatDateTime = (iso: string) =>
 
 export const statusLabel: Record<string, string> = {
   new: "New",
-  ai_processing: "AI Processing",
   in_review: "In Review",
   submitted: "Submitted",
   approved: "Approved",
   rejected: "Rejected",
-  changes_requested: "Changes Requested",
 };
 
 export const statusTone: Record<string, string> = {
   new: "bg-muted text-muted-foreground",
-  ai_processing: "bg-info/15 text-info",
   in_review: "bg-primary/15 text-primary",
   submitted: "bg-warning/20 text-warning-foreground",
   approved: "bg-success/15 text-success",
   rejected: "bg-destructive/15 text-destructive",
-  changes_requested: "bg-warning/20 text-warning-foreground",
 };
