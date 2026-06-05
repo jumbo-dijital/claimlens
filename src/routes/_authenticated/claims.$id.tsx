@@ -493,6 +493,18 @@ function ClaimDetail() {
       )}
 
       <AuditTimeline claimId={id} />
+
+      {isSuperadmin && (
+        <div className="flex justify-end pt-12">
+          <DeleteClaimButton
+            onDelete={async () => {
+              await del({ data: { claimId: id } });
+              toast.success("Claim deleted");
+              router.navigate({ to: "/" });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
