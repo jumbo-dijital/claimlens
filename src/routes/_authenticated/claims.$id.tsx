@@ -796,6 +796,7 @@ function ImagePanel({
           {uploadButton}
           {canGenerate && images.length === 0 && (
             <Button
+              variant="ai"
               onClick={() => setGenDialogOpen(true)}
               disabled={generating}
             >
@@ -803,7 +804,7 @@ function ImagePanel({
             </Button>
           )}
           {canGenerate && images.length > 0 && (
-            <Button variant="outline" onClick={() => setGenDialogOpen(true)} disabled={generating}>
+            <Button variant="ai" onClick={() => setGenDialogOpen(true)} disabled={generating}>
               {generating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
               ) : (
@@ -988,7 +989,7 @@ function GenerateImagesDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onGenerate} disabled={!canGenerate} title={!canGenerate && !sceneLoading ? "Scene must be at least 20 characters" : undefined}>
+          <Button variant="ai" onClick={onGenerate} disabled={!canGenerate} title={!canGenerate && !sceneLoading ? "Scene must be at least 20 characters" : undefined}>
             <Sparkles className="mr-2 h-4 w-4" /> Generate
           </Button>
         </DialogFooter>

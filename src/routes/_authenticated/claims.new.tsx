@@ -75,7 +75,7 @@ function NewClaimPage() {
         headerExtra={
           isSuperadmin ? (
             <Button
-              variant="outline"
+              variant="ai"
               size="sm"
               onClick={runGenerate}
               disabled={generating}
