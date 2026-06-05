@@ -115,7 +115,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
       .eq("claim_id", data.claimId);
     if (!images || images.length === 0) throw new Error("No images on this claim");
 
-    await supabaseAdmin.from("claims").update({ status: "ai_processing" }).eq("id", data.claimId);
+    
 
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
@@ -145,7 +145,6 @@ export const analyzeClaim = createServerFn({ method: "POST" })
       });
       aiOutput = normalizeAiOutput(extractJsonFromResponse(text));
     } catch (err) {
-      await supabaseAdmin.from("claims").update({ status: "new" }).eq("id", data.claimId);
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429")) throw new Error("AI rate limit reached. Please wait and try again.");
       if (msg.includes("402")) throw new Error("AI credits exhausted. Please add credits in Workspace settings.");
