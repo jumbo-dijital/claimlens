@@ -1428,7 +1428,7 @@ function AuditRowItem({ row }: { row: AuditRow }) {
           </span>
         </div>
         {commentText && (
-          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
+          <div className="rounded-md border border-border bg-yellow-50 px-3 py-2 text-sm whitespace-pre-wrap">
             {commentText}
           </div>
         )}
