@@ -19,9 +19,9 @@ export interface ClaimDetailsValues {
   policy_number: string;
   vehicle_make: string;
   vehicle_model: string;
-  vehicle_year: number;
-  vehicle_class: "standard" | "premium";
-  damage_severity: "minor" | "moderate" | "severe";
+  vehicle_year: number | "";
+  vehicle_class: "standard" | "premium" | "";
+  damage_severity: "minor" | "moderate" | "severe" | "";
   paint_color: string;
   impact_area: string;
   incident_description: string;
@@ -33,9 +33,9 @@ export function emptyClaimDetails(): ClaimDetailsValues {
     policy_number: "",
     vehicle_make: "",
     vehicle_model: "",
-    vehicle_year: new Date().getFullYear(),
-    vehicle_class: "standard",
-    damage_severity: "moderate",
+    vehicle_year: "",
+    vehicle_class: "",
+    damage_severity: "",
     paint_color: "",
     impact_area: "",
     incident_description: "",
@@ -113,16 +113,19 @@ export function ClaimDetailsForm({
             <Label className="text-xs">Year</Label>
             <Input
               type="number"
-              value={form.vehicle_year}
-              onChange={(e) => set("vehicle_year", Number(e.target.value) || form.vehicle_year)}
+              value={form.vehicle_year === "" ? "" : form.vehicle_year}
+              onChange={(e) => {
+                const val = e.target.value;
+                set("vehicle_year", val === "" ? "" : Number(val));
+              }}
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs">Vehicle class</Label>
-            <Select value={form.vehicle_class} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={form.vehicle_class || undefined} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
+              <SelectTrigger><SelectValue placeholder="Select class…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="standard">Standard</SelectItem>
                 <SelectItem value="premium">Premium</SelectItem>
@@ -131,8 +134,8 @@ export function ClaimDetailsForm({
           </div>
           <div>
             <Label className="text-xs">Damage severity</Label>
-            <Select value={form.damage_severity} onValueChange={(v) => set("damage_severity", v as "minor" | "moderate" | "severe")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={form.damage_severity || undefined} onValueChange={(v) => set("damage_severity", v as "minor" | "moderate" | "severe")}>
+              <SelectTrigger><SelectValue placeholder="Select severity…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="minor">Minor</SelectItem>
                 <SelectItem value="moderate">Moderate</SelectItem>
