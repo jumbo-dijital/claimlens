@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare, Check, X } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, MessageSquare, Check, X } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -1577,13 +1577,12 @@ function ReturnToAssessorsButton({
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
-        <Reply className="mr-2 h-4 w-4" />
-        Return to assessors
+        Return to review
       </Button>
       <Dialog open={open} onOpenChange={(o) => !submitting && setOpen(o)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Return to assessors</DialogTitle>
+            <DialogTitle>Return to review</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <Label className="text-xs">Comment (optional)</Label>
