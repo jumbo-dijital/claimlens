@@ -43,9 +43,9 @@ function ClaimsQueuePage() {
     queryFn: async () => {
       let q = supabase.from("claims").select("*").order("created_at", { ascending: false });
       if (role === "adjuster") {
-        q = q.in("status", ["submitted", "approved", "rejected", "changes_requested"]);
+        q = q.in("status", ["submitted", "approved", "rejected"]);
       } else if (role === "agent") {
-        q = q.in("status", ["new", "ai_processing", "in_review", "changes_requested", "submitted"]);
+        q = q.in("status", ["new", "in_review", "submitted"]);
       }
       const { data, error } = await q;
       if (error) throw error;

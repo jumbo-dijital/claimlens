@@ -411,7 +411,7 @@ export const reviewClaim = createServerFn({ method: "POST" })
     z
       .object({
         claimId: z.string().uuid(),
-        decision: z.enum(["approve", "reject", "changes"]),
+        decision: z.enum(["approve", "reject"]),
         comment: z.string().max(2000).default(""),
       })
       .parse(i),
@@ -420,7 +420,6 @@ export const reviewClaim = createServerFn({ method: "POST" })
     const statusMap: Record<string, string> = {
       approve: "approved",
       reject: "rejected",
-      changes: "changes_requested",
     };
     await supabaseAdmin
       .from("claims")
@@ -438,6 +437,58 @@ export const reviewClaim = createServerFn({ method: "POST" })
       actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
       action: `review_${data.decision}`,
       details: { comment: data.comment } as never,
+      ...getRequestAuditContext(),
+    });
+    return { ok: true };
+  });
+
+export const returnToAssessors = createServerFn({ method: "POST" })
+  .middleware([requireRole("adjuster", "superadmin")])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        comment: z.string().max(2000).optional().default(""),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await supabaseAdmin
+      .from("claims")
+      .update({ status: "in_review" })
+      .eq("id", data.claimId);
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: data.claimId,
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin") ? "superadmin" : "adjuster",
+      action: "returned_to_assessors",
+      details: { comment: data.comment } as never,
+      ...getRequestAuditContext(),
+    });
+    return { ok: true };
+  });
+
+export const addClaimComment = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        text: z.string().trim().min(1).max(2000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await supabaseAdmin.from("audit_log").insert({
+      claim_id: data.claimId,
+      actor_user_id: context.userId,
+      actor_role: context.roles.includes("superadmin")
+        ? "superadmin"
+        : context.roles.includes("adjuster")
+          ? "adjuster"
+          : "agent",
+      action: "comment",
+      details: { text: data.text } as never,
       ...getRequestAuditContext(),
     });
     return { ok: true };

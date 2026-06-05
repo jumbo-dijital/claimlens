@@ -59,9 +59,9 @@ function ReviewPage() {
     0,
   );
 
-  const act = async (decision: "approve" | "reject" | "changes") => {
+  const act = async (decision: "approve" | "reject") => {
     await review({ data: { claimId: id, decision, comment } });
-    toast.success(`Claim ${decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "sent back"}`);
+    toast.success(`Claim ${decision === "approve" ? "approved" : "rejected"}`);
     router.invalidate();
   };
 
@@ -115,7 +115,6 @@ function ReviewPage() {
           />
           <div className="flex gap-2">
             <Button onClick={() => act("approve")}>Approve</Button>
-            <Button variant="outline" onClick={() => act("changes")}>Request changes</Button>
             <Button variant="destructive" onClick={() => act("reject")}>Reject</Button>
           </div>
         </CardContent>
