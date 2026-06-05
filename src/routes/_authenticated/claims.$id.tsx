@@ -334,7 +334,7 @@ function ClaimDetail() {
                     Add damage photos before starting the assessment
                   </div>
                 )}
-                <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
+                <Button onClick={runAnalysis} disabled={analyzing || images.length === 0}>
                   <Sparkles className="mr-2 h-4 w-4" />
                   {analyzing ? "Analyzing…" : "Run AI analysis"}
                 </Button>
