@@ -31,6 +31,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-ai: var(--ai);
+  --color-ai-foreground: var(--ai-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
