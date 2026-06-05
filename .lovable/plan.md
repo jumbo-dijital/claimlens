@@ -1,93 +1,55 @@
-## Goal
+## Lifecycle (final)
 
-Rebuild "New claim" as a normal action on the claims table. Manual entry is the default; AI generation is a labeled superadmin shortcut on both steps of the flow.
+Five steps, no `ai_processing`, no `changes_requested`:
 
-Step 1 (claim details): empty form by default + "Demo: Generate claim" shortcut.
-Step 2 (damage photos, on the claim detail page): manual upload by default + "Demo: Generate photos" shortcut that opens a modal pre-populated with scene/model/angles.
-
-## Files
-
-### New: `src/components/claim-details-form.tsx`
-
-Extract the editable form currently inlined as `ClaimEditCard` in `src/routes/_authenticated/claims.$id.tsx` (~lines 450–605) into a reusable component.
-
-```tsx
-export interface ClaimDetailsValues {
-  policyholder_name: string;
-  policy_number: string;
-  vehicle_make: string;
-  vehicle_model: string;
-  vehicle_year: number;
-  vehicle_class: "standard" | "premium";
-  damage_severity: "minor" | "moderate" | "severe";
-  paint_color: string;
-  impact_area: string;
-  incident_description: string;
-}
-
-interface Props {
-  initial: ClaimDetailsValues;
-  saveLabel?: string;        // default "Save"
-  onSave: (values: ClaimDetailsValues) => Promise<void>;
-  onDelete?: () => Promise<void>;   // omit to hide Delete
-  headerExtra?: ReactNode;          // right-aligned slot in CardHeader
-  title?: string;                   // default "Claim details"
-  valuesOverride?: ClaimDetailsValues; // setting this resets form state to it
-}
+```text
+ ●━━━━●━━━━○━━━━○━━━━○
+ New  Review Submit Approved  Rejected
 ```
 
-Internally holds form state, exposes a `headerExtra` slot for the "Demo: Generate claim" button, keeps the existing delete confirmation `AlertDialog`. Export `emptyClaimDetails()` returning sensible blanks (empty strings, current year, "standard", "moderate").
+| Status | Step | Notes |
+|---|---|---|
+| `new` | 1. New | claim created; covers the brief AI analysis window |
+| `in_review` | 2. In review | assessment exists with line items |
+| `submitted` | 3. Submitted for approval | awaiting adjuster |
+| `approved` | 4. Approved | terminal (success) |
+| `rejected` | 5. Rejected | terminal (destructive) |
 
-### Edit: `src/routes/_authenticated/claims.$id.tsx`
+Approved and Rejected are mutually exclusive terminals on the same row; only the reached one lights up. Adjusters/superadmins can send a `submitted` claim back via "Return to assessors", which sets the status back to `in_review`.
 
-- Remove the inlined `ClaimEditCard`.
-- Use `<ClaimDetailsForm initial={...} onSave={...} onDelete={isSuperadmin ? ... : undefined} />` in `ClaimDetail`.
-- In `ImagePanel`, reorder the action row so **Upload photos is the default primary button** and the AI shortcut is the secondary one, labelled **"Demo: Generate photos"** with the `Sparkles` icon (superadmin-only, hidden once any manual upload exists — current rule). Same wording for the regenerate state: **"Demo: Regenerate"**. Clicking it still opens the existing `GenerateImagesDialog`, which already contains scene/model/angle-count fields — no behavior change there.
+## DB migration
 
-### New: `src/routes/_authenticated/claims.new.tsx`
+Single migration on `public.claims`:
 
-Route at `/claims/new`. Heading "New claim". Renders:
+1. `UPDATE claims SET status = 'new' WHERE status = 'ai_processing';`
+2. `UPDATE claims SET status = 'in_review' WHERE status = 'changes_requested';`
+3. Drop the existing CHECK constraint on `status` and recreate it as `CHECK (status IN ('new','in_review','submitted','approved','rejected'))`.
 
-```tsx
-<ClaimDetailsForm
-  initial={emptyClaimDetails()}
-  valuesOverride={aiSeed ?? undefined}
-  saveLabel="Create claim"
-  onSave={async (values) => {
-    const { claimId } = await createClaim({ data: values });
-    router.navigate({ to: "/claims/$id", params: { id: claimId } });
-  }}
-  headerExtra={isSuperadmin ? <DemoGenerateButton onFilled={setAiSeed} /> : null}
-/>
-```
+No changes to RLS or grants. Audit rows are not rewritten — historical `action` values like `review_changes` stay as-is in `audit_log`.
 
-`DemoGenerateButton`: outline button, `Sparkles` icon, label "Demo: Generate claim". Calls `generateSyntheticClaimDetails` server fn and passes the mapped values into `setAiSeed`. The AI returns extra fields (`scene`, etc.) — drop fields not on the form.
+## Server functions (`src/lib/claim-actions.functions.ts`)
 
-### Edit: `src/lib/claim-actions.functions.ts`
+- `reviewClaim`: narrow `decision` to `z.enum(["approve","reject"])` and drop the `changes` branch + `changes_requested` from `statusMap`. The senior review screen no longer has a "Request changes" option — sending work back is the adjuster's "Return to assessors" action instead.
+- New `returnToAssessors({ claimId, comment? })`, `requireRole("adjuster","superadmin")`: sets `claims.status = 'in_review'`, inserts `audit_log` row with `action = "returned_to_assessors"`, `details = { comment }`.
+- New `addClaimComment({ claimId, text })`, `requireRole("agent","adjuster","superadmin")`: text trimmed 1..2000, inserts `audit_log` row with `action = "comment"`, `details = { text }`. Comments live in `audit_log` so they appear in Activity history with no schema change.
 
-Repurpose `createSyntheticClaim` → `createClaim`:
+## AI analysis (`src/lib/ai/analyze-claim.functions.ts`)
 
-- Middleware broadened to `requireRole("agent", "adjuster", "superadmin")`.
-- Drop `scene`, `image_model`, `image_angle_count`, and `images` from the input schema (those belong to the Damage photos step). Insert column defaults for `image_model` / `image_angle_count` when writing the row.
-- Audit action becomes `"claim_created"`; add `details: { source: "manual" | "demo_generated" }` driven by an optional `demoGenerated: boolean` input.
+Remove the `status = "ai_processing"` write at line 118. After analysis succeeds, set `status = "in_review"` (already happens downstream when the assessment is written — verify and keep a single transition from `new` → `in_review`). No intermediate processing status surfaces to the UI; the button shows its own "Analyzing…" spinner.
 
-### Edit: `src/routes/_authenticated/index.tsx`
+## UI
 
-Replace the superadmin "Generate synthetic claim" button with a **`+ New`** button visible to all roles, linking to `/claims/new`.
-
-### Edit: `src/components/app-header.tsx`
-
-Remove the "Generate claim" nav item from `navFor`. Nav becomes Claims + Audit log for everyone.
-
-### Delete
-
-- `src/routes/_authenticated/admin.generate.tsx`
-- `src/lib/use-claim-draft.ts` (only used by that page)
-
-Keep `src/lib/generate-claim-details.functions.ts` — it powers the "Demo: Generate claim" shortcut.
+- New `src/components/claim-progress-stepper.tsx` (`{ status }` prop). Semantic tokens only; check icons for completed steps; ring on current; muted on upcoming. On `<sm`, hide non-current labels.
+- `src/routes/_authenticated/claims.$id.tsx`:
+  - Mount the stepper directly above the `ClaimDetailsForm`.
+  - Header action row: replace the existing `submitted || changes_requested` predicate with just `submitted`. Add a `Return to assessors` outline button (adjuster/superadmin, when `status === 'submitted'`) that opens a small dialog with an optional comment textarea and calls `returnToAssessors`.
+  - Activity history: add a comment composer (Textarea + "Post comment") at the top for all roles, calling `addClaimComment`. Extend the activity row renderer to label `comment` (show body, preserve line breaks) and `returned_to_assessors` (show comment if any).
+- `src/routes/_authenticated/claims.$id.review.tsx`: remove the "Request changes" button and the `"changes"` branch from `act()`. Keep Approve and Reject.
+- `src/routes/_authenticated/index.tsx`: drop `ai_processing` and `changes_requested` from both status filters (lines 46 and 48).
+- `src/lib/format.ts`: remove `ai_processing` and `changes_requested` entries from both `statusLabel` and `statusTone`.
 
 ## Out of scope
 
-- No changes to `GenerateImagesDialog` internals or to the image generation pipeline.
-- No changes to the AI prompt in `generateSyntheticClaimDetails`.
-- No rename/backfill of historical `claim_created_synthetic` audit rows.
+- Renaming or backfilling historical `audit_log.action` values (`review_changes`, etc.).
+- Any change to `ai_assessments`, `assessment_line_items`, or image flows.
+- Editing or deleting comments after posting.
