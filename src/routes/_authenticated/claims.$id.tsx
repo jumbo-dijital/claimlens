@@ -1424,7 +1424,7 @@ function AuditTimeline({ claimId }: { claimId: string }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Activity ({rows.length})</CardTitle>
+        <CardTitle className="text-base">Activity history</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
