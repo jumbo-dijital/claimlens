@@ -18,11 +18,8 @@ const roleLabels: Record<AppRole, string> = {
   superadmin: "Superadmin",
 };
 
-function navFor(roles: AppRole[]) {
+function navFor(_roles: AppRole[]) {
   const items: { to: string; label: string }[] = [{ to: "/", label: "Claims" }];
-  if (roles.includes("superadmin")) {
-    items.push({ to: "/admin/generate", label: "Generate claim" });
-  }
   items.push({ to: "/audit", label: "Audit log" });
   return items;
 }

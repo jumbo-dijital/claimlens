@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, RefreshCw, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -51,6 +51,7 @@ import {
   setAssessmentFeedback,
   estimateLineItemCost,
 } from "@/lib/claim-actions.functions";
+import { ClaimDetailsForm } from "@/components/claim-details-form";
 
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
@@ -198,21 +199,36 @@ function ClaimDetail() {
         </div>
       </div>
 
-      <ClaimEditCard
-        claim={claim}
-        canDelete={isSuperadmin}
+      <ClaimDetailsForm
+        initial={{
+          policyholder_name: claim.policyholder_name ?? "",
+          policy_number: claim.policy_number ?? "",
+          vehicle_make: claim.vehicle_make ?? "",
+          vehicle_model: claim.vehicle_model ?? "",
+          vehicle_year: claim.vehicle_year ?? new Date().getFullYear(),
+          vehicle_class: (claim.vehicle_class as "standard" | "premium") ?? "standard",
+          damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
+          paint_color: claim.paint_color ?? "",
+          impact_area: claim.impact_area ?? "",
+          incident_description: claim.incident_description ?? "",
+        }}
         onSave={async (patch) => {
           await update({ data: { claimId: id, patch } });
           await refetchClaim();
           refreshActivity();
           toast.success("Claim updated");
         }}
-        onDelete={async () => {
-          await del({ data: { claimId: id } });
-          toast.success("Claim deleted");
-          router.navigate({ to: "/" });
-        }}
+        onDelete={
+          isSuperadmin
+            ? async () => {
+                await del({ data: { claimId: id } });
+                toast.success("Claim deleted");
+                router.navigate({ to: "/" });
+              }
+            : undefined
+        }
       />
+
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card>
@@ -447,162 +463,6 @@ interface ClaimRow {
   image_angle_count: number | null;
 }
 
-function ClaimEditCard({
-  claim,
-  canDelete,
-  onSave,
-  onDelete,
-}: {
-  claim: ClaimRow;
-  canDelete: boolean;
-  onSave: (patch: Record<string, unknown>) => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  const [form, setForm] = useState({
-    policyholder_name: claim.policyholder_name ?? "",
-    policy_number: claim.policy_number ?? "",
-    vehicle_make: claim.vehicle_make ?? "",
-    vehicle_model: claim.vehicle_model ?? "",
-    vehicle_year: claim.vehicle_year ?? 2020,
-    vehicle_class: (claim.vehicle_class as "standard" | "premium") ?? "standard",
-    incident_description: claim.incident_description ?? "",
-    paint_color: claim.paint_color ?? "",
-    impact_area: claim.impact_area ?? "",
-    damage_severity: (claim.damage_severity as "minor" | "moderate" | "severe") ?? "moderate",
-  });
-  const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Claim details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label className="text-xs">Policyholder name</Label>
-            <Input value={form.policyholder_name} onChange={(e) => set("policyholder_name", e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Policy number</Label>
-            <Input value={form.policy_number} onChange={(e) => set("policy_number", e.target.value)} />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <Label className="text-xs">Make</Label>
-            <Input value={form.vehicle_make} onChange={(e) => set("vehicle_make", e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Model</Label>
-            <Input value={form.vehicle_model} onChange={(e) => set("vehicle_model", e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Year</Label>
-            <Input
-              type="number"
-              value={form.vehicle_year}
-              onChange={(e) => set("vehicle_year", Number(e.target.value) || form.vehicle_year)}
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-xs">Vehicle class</Label>
-            <Select value={form.vehicle_class} onValueChange={(v) => set("vehicle_class", v as "standard" | "premium")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Damage severity</Label>
-            <Select value={form.damage_severity} onValueChange={(v) => set("damage_severity", v as "minor" | "moderate" | "severe")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="minor">Minor</SelectItem>
-                <SelectItem value="moderate">Moderate</SelectItem>
-                <SelectItem value="severe">Severe</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Paint color</Label>
-          <Input value={form.paint_color} onChange={(e) => set("paint_color", e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Impact area</Label>
-          <Input value={form.impact_area} onChange={(e) => set("impact_area", e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Incident description</Label>
-          <Textarea
-            value={form.incident_description}
-            onChange={(e) => set("incident_description", e.target.value)}
-            rows={3}
-          />
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await onSave(form);
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Save failed");
-              } finally {
-                setSaving(false);
-              }
-            }}
-            disabled={saving}
-          >
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Save
-          </Button>
-          {canDelete && (
-            <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </Button>
-          )}
-        </div>
-        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this claim?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This removes the claim and all its images, assessments, line items, and reviews. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  setDeleting(true);
-                  try {
-                    await onDelete();
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : "Delete failed");
-                    setDeleting(false);
-                  }
-                }}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
-  );
-}
 
 interface ClaimImageRow {
   id: string;
@@ -862,7 +722,7 @@ function ImagePanel({
               onClick={() => setGenDialogOpen(true)}
               disabled={generating}
             >
-              <Sparkles className="mr-2 h-4 w-4" /> Generate images
+              <Sparkles className="mr-2 h-4 w-4" /> Demo: Generate photos
             </Button>
           )}
           {canGenerate && images.length > 0 && (
@@ -870,7 +730,7 @@ function ImagePanel({
               {generating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating…</>
               ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>
+                <><Sparkles className="mr-2 h-4 w-4" /> Demo: Regenerate</>
               )}
             </Button>
           )}

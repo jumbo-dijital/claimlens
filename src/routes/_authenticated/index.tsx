@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, FileQuestion, ScanEye } from "lucide-react";
+import { ArrowRight, FileQuestion, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -70,14 +70,12 @@ function ClaimsQueuePage() {
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        {role === "superadmin" && (
-          <Button asChild>
-            <Link to="/admin/generate">
-              <ScanEye className="mr-2 h-4 w-4" />
-              Generate synthetic claim
-            </Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link to="/claims/new">
+            <Plus className="mr-2 h-4 w-4" />
+            New claim
+          </Link>
+        </Button>
       </div>
 
       <Card>
@@ -91,11 +89,9 @@ function ClaimsQueuePage() {
             <div className="grid place-items-center py-16 text-center">
               <FileQuestion className="h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">No claims in this queue</p>
-              {role === "superadmin" && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Use the generate claim flow to seed synthetic claims.
-                </p>
-              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Click "New claim" to create one.
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
