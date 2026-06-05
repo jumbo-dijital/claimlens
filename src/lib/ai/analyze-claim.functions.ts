@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getRequestAuditContext } from "@/lib/audit-context.server";
+import { insertAuditLog } from "@/lib/audit-log.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 const DAMAGE_TYPES = ["scratch", "dent", "crack", "broken", "missing", "structural", "other"] as const;
@@ -215,7 +216,7 @@ export const analyzeClaim = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("claims").update({ status: "in_review" }).eq("id", data.claimId);
 
-    await supabaseAdmin.from("audit_log").insert({
+    await insertAuditLog({
       claim_id: data.claimId,
       actor_user_id: context.userId,
       actor_role: "system",
