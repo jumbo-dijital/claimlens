@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
@@ -24,6 +24,13 @@ function NewClaimPage() {
   const create = useServerFn(createClaim);
   const generate = useServerFn(generateSyntheticClaimDetails);
   const isSuperadmin = me?.roles.includes("superadmin") ?? false;
+
+  useEffect(() => {
+    if (me && !isSuperadmin) {
+      router.navigate({ to: "/", replace: true });
+    }
+  }, [me, isSuperadmin, router]);
+
   const [aiSeed, setAiSeed] = useState<ClaimDetailsValues | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [demoUsed, setDemoUsed] = useState(false);

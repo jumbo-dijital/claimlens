@@ -41,7 +41,7 @@ const ImageModelEnum = z.enum([
 ]);
 
 export const createClaim = createServerFn({ method: "POST" })
-  .middleware([requireRole("agent", "adjuster", "superadmin")])
+  .middleware([requireRole("superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
