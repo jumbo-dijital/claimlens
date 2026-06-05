@@ -32,7 +32,8 @@ interface ClaimRow {
 
 function ClaimsQueuePage() {
   const { data: me } = useMe();
-  const role = me?.roles.includes("superadmin")
+  const isSuperadmin = me?.roles.includes("superadmin") ?? false;
+  const role = isSuperadmin
     ? "superadmin"
     : me?.roles.includes("adjuster")
       ? "adjuster"
