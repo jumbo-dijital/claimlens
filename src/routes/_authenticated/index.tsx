@@ -93,7 +93,7 @@ function ClaimsQueuePage() {
               <FileQuestion className="h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">No claims in this queue</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Click "New claim" to create one.
+                {isSuperadmin ? 'Click "New claim" to create one.' : "Check back later."}
               </p>
             </div>
           ) : (
