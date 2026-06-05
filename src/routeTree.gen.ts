@@ -16,7 +16,6 @@ import { Route as ApiGenerateDamageImageRouteImport } from './routes/api/generat
 import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as AuthenticatedClaimsNewRouteImport } from './routes/_authenticated/claims.new'
 import { Route as AuthenticatedClaimsIdRouteImport } from './routes/_authenticated/claims.$id'
-import { Route as AuthenticatedAdminGenerateRouteImport } from './routes/_authenticated/admin.generate'
 import { Route as AuthenticatedClaimsIdReviewRouteImport } from './routes/_authenticated/claims.$id.review'
 
 const AuthRoute = AuthRouteImport.update({
@@ -53,12 +52,6 @@ const AuthenticatedClaimsIdRoute = AuthenticatedClaimsIdRouteImport.update({
   path: '/claims/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminGenerateRoute =
-  AuthenticatedAdminGenerateRouteImport.update({
-    id: '/admin/generate',
-    path: '/admin/generate',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedClaimsIdReviewRoute =
   AuthenticatedClaimsIdReviewRouteImport.update({
     id: '/review',
@@ -71,7 +64,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
-  '/admin/generate': typeof AuthenticatedAdminGenerateRoute
   '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/claims/new': typeof AuthenticatedClaimsNewRoute
   '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
@@ -81,7 +73,6 @@ export interface FileRoutesByTo {
   '/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
   '/': typeof AuthenticatedIndexRoute
-  '/admin/generate': typeof AuthenticatedAdminGenerateRoute
   '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/claims/new': typeof AuthenticatedClaimsNewRoute
   '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
@@ -93,7 +84,6 @@ export interface FileRoutesById {
   '/_authenticated/audit': typeof AuthenticatedAuditRoute
   '/api/generate-damage-image': typeof ApiGenerateDamageImageRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/admin/generate': typeof AuthenticatedAdminGenerateRoute
   '/_authenticated/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/_authenticated/claims/new': typeof AuthenticatedClaimsNewRoute
   '/_authenticated/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
@@ -105,7 +95,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/audit'
     | '/api/generate-damage-image'
-    | '/admin/generate'
     | '/claims/$id'
     | '/claims/new'
     | '/claims/$id/review'
@@ -115,7 +104,6 @@ export interface FileRouteTypes {
     | '/audit'
     | '/api/generate-damage-image'
     | '/'
-    | '/admin/generate'
     | '/claims/$id'
     | '/claims/new'
     | '/claims/$id/review'
@@ -126,7 +114,6 @@ export interface FileRouteTypes {
     | '/_authenticated/audit'
     | '/api/generate-damage-image'
     | '/_authenticated/'
-    | '/_authenticated/admin/generate'
     | '/_authenticated/claims/$id'
     | '/_authenticated/claims/new'
     | '/_authenticated/claims/$id/review'
@@ -189,13 +176,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClaimsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/generate': {
-      id: '/_authenticated/admin/generate'
-      path: '/admin/generate'
-      fullPath: '/admin/generate'
-      preLoaderRoute: typeof AuthenticatedAdminGenerateRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/claims/$id/review': {
       id: '/_authenticated/claims/$id/review'
       path: '/review'
@@ -222,7 +202,6 @@ const AuthenticatedClaimsIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedAdminGenerateRoute: typeof AuthenticatedAdminGenerateRoute
   AuthenticatedClaimsIdRoute: typeof AuthenticatedClaimsIdRouteWithChildren
   AuthenticatedClaimsNewRoute: typeof AuthenticatedClaimsNewRoute
 }
@@ -230,7 +209,6 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAuditRoute: AuthenticatedAuditRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedAdminGenerateRoute: AuthenticatedAdminGenerateRoute,
   AuthenticatedClaimsIdRoute: AuthenticatedClaimsIdRouteWithChildren,
   AuthenticatedClaimsNewRoute: AuthenticatedClaimsNewRoute,
 }
@@ -246,3 +224,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
