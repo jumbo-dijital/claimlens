@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info, Reply, MessageSquare } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -50,8 +50,11 @@ import {
   addLineItem,
   setAssessmentFeedback,
   estimateLineItemCost,
+  returnToAssessors,
+  addClaimComment,
 } from "@/lib/claim-actions.functions";
 import { ClaimDetailsForm } from "@/components/claim-details-form";
+import { ClaimProgressStepper } from "@/components/claim-progress-stepper";
 import { generateSyntheticScene } from "@/lib/generate-claim-details.functions";
 
 import { streamImage } from "@/lib/stream-image";
@@ -97,6 +100,7 @@ function ClaimDetail() {
   const updateSummary = useServerFn(updateAssessmentSummary);
   const addItem = useServerFn(addLineItem);
   const setFeedback = useServerFn(setAssessmentFeedback);
+  const returnClaim = useServerFn(returnToAssessors);
   const queryClient = useQueryClient();
   const refreshActivity = () =>
     queryClient.invalidateQueries({ queryKey: ["claim-audit", id] });
@@ -186,12 +190,22 @@ function ClaimDetail() {
         </div>
         <div className="flex gap-2">
           {(me?.roles.includes("adjuster") || isSuperadmin) &&
-            (claim.status === "submitted" || claim.status === "changes_requested") && (
-              <Button asChild variant="secondary">
-                <Link to="/claims/$id/review" params={{ id }}>Review</Link>
-              </Button>
+            claim.status === "submitted" && (
+              <>
+                <Button asChild variant="secondary">
+                  <Link to="/claims/$id/review" params={{ id }}>Review</Link>
+                </Button>
+                <ReturnToAssessorsButton
+                  onConfirm={async (comment) => {
+                    await returnClaim({ data: { claimId: id, comment } });
+                    toast.success("Returned to assessors");
+                    await refetchClaim();
+                    refreshActivity();
+                  }}
+                />
+              </>
             )}
-          {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
+          {assessment && claim.status !== "submitted" && claim.status !== "approved" && claim.status !== "rejected" && (
             <Button onClick={onSubmit}>
               <Send className="mr-2 h-4 w-4" />
               Submit for approval
@@ -208,6 +222,8 @@ function ClaimDetail() {
           )}
         </div>
       </div>
+
+      <ClaimProgressStepper status={claim.status} />
 
       <ClaimDetailsForm
         initial={{
@@ -421,7 +437,7 @@ function ClaimDetail() {
           </CardContent>
         </Card>
 
-        {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
+        {assessment && claim.status !== "submitted" && claim.status !== "approved" && claim.status !== "rejected" && (
           <Button onClick={onSubmit}>
             <Send className="mr-2 h-4 w-4" />
             Submit for approval
@@ -1228,10 +1244,13 @@ interface AuditRow {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  claim_created: "Claim created",
   claim_created_synthetic: "Claim created",
   claim_updated: "Claim details edited",
   claim_deleted: "Claim deleted",
   claim_images_replaced: "Damage photos replaced",
+  claim_images_uploaded: "Damage photos uploaded",
+  claim_image_deleted: "Damage photo deleted",
   line_item_added: "Line item added",
   line_item_edited: "Line item edited",
   line_item_removed: "Line item removed",
@@ -1239,8 +1258,9 @@ const ACTION_LABELS: Record<string, string> = {
   submitted_for_approval: "Submitted for approval",
   review_approve: "Review: approved",
   review_reject: "Review: rejected",
-  review_changes: "Review: changes requested",
+  returned_to_assessors: "Returned to assessors",
   ai_analysis_completed: "AI analysis completed",
+  comment: "Comment",
 };
 
 const FIELD_LABELS: Record<string, string> = {
