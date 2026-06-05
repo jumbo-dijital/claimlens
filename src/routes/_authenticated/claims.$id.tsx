@@ -52,6 +52,7 @@ import {
   estimateLineItemCost,
 } from "@/lib/claim-actions.functions";
 import { ClaimDetailsForm } from "@/components/claim-details-form";
+import { generateSyntheticScene } from "@/lib/generate-claim-details.functions";
 
 import { streamImage } from "@/lib/stream-image";
 import { buildDamagePrompt, ANGLES } from "@/lib/claim-image-prompt";
