@@ -917,7 +917,7 @@ function GenerateImagesDialog({
           </div>
           <div>
             <Label className="text-xs">Image model</Label>
-            <Select value={imageModel} onValueChange={(v) => onUpdateClaim({ image_model: v })}>
+            <Select value={imageModel} onValueChange={(v) => onUpdateClaim({ image_model: v })} disabled={sceneLoading}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="google/gemini-3.1-flash-image-preview">Nano Banana 2 (fast)</SelectItem>
@@ -931,6 +931,7 @@ function GenerateImagesDialog({
             <Select
               value={String(angleCount)}
               onValueChange={(v) => onUpdateClaim({ image_angle_count: Number(v) })}
+              disabled={sceneLoading}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -943,7 +944,7 @@ function GenerateImagesDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onGenerate}>
+          <Button onClick={onGenerate} disabled={!canGenerate} title={!canGenerate && !sceneLoading ? "Scene must be at least 20 characters" : undefined}>
             <Sparkles className="mr-2 h-4 w-4" /> Generate
           </Button>
         </DialogFooter>
