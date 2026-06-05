@@ -883,9 +883,13 @@ function GenerateImagesDialog({
     })();
     return () => {
       cancelled = true;
+      setSceneLoading(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const sceneText = (claim.scene ?? "").trim();
+  const canGenerate = !sceneLoading && sceneText.length >= 20;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
