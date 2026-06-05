@@ -326,10 +326,17 @@ function ClaimDetail() {
           </CardHeader>
           <CardContent>
             {!assessment ? (
-              <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                {analyzing ? "Analyzing…" : "Run AI analysis"}
-              </Button>
+              <div className="space-y-3">
+                {images.length === 0 && (
+                  <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                    Add damage photos before starting the assessment
+                  </div>
+                )}
+                <Button variant="outline" onClick={runAnalysis} disabled={analyzing || images.length === 0}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {analyzing ? "Analyzing…" : "Run AI analysis"}
+                </Button>
+              </div>
             ) : (
               <div className="space-y-2">
                 {lineItems.length === 0 && (
