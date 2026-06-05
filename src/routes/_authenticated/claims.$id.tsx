@@ -1247,16 +1247,26 @@ function AddLineItemDialog({
             </Button>
           </div>
           {estimate && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Part cost ($ USD)</Label>
-                <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Part cost ($ USD)</Label>
+                  <Input value={partCost} onChange={(e) => setPartCost(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Labour hours</Label>
+                  <Input value={hours} onChange={(e) => setHours(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Labour hours</Label>
-                <Input value={hours} onChange={(e) => setHours(e.target.value)} />
-              </div>
-            </div>
+              {estimateRationale && (
+                <div className="rounded-md border border-ai/30 bg-ai/5 p-3">
+                  <div className="mb-1 flex items-center gap-1 text-xs font-medium text-ai">
+                    <Sparkles className="h-3 w-3" /> AI reasoning
+                  </div>
+                  <div className="text-xs text-muted-foreground">{estimateRationale}</div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -1278,6 +1288,7 @@ function AddLineItemDialog({
                   labour_cost: hoursNum * 95,
                 },
                 rationale,
+                estimateRationale,
               );
             }}
           >
