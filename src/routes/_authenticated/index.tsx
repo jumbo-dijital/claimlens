@@ -89,11 +89,9 @@ function ClaimsQueuePage() {
             <div className="grid place-items-center py-16 text-center">
               <FileQuestion className="h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">No claims in this queue</p>
-              {role === "superadmin" && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Use the generate claim flow to seed synthetic claims.
-                </p>
-              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Click "New claim" to create one.
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
