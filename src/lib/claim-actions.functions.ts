@@ -40,44 +40,36 @@ const ImageModelEnum = z.enum([
   "google/gemini-3-pro-image-preview",
 ]);
 
-export const createSyntheticClaim = createServerFn({ method: "POST" })
-  .middleware([requireRole("superadmin")])
+export const createClaim = createServerFn({ method: "POST" })
+  .middleware([requireRole("agent", "adjuster", "superadmin")])
   .inputValidator((input: unknown) =>
     z
       .object({
         policyholder_name: z.string().min(1).max(120),
+        policy_number: z.string().max(60).default(""),
         vehicle_make: z.string().min(1).max(60),
         vehicle_model: z.string().min(1).max(60),
         vehicle_year: z.number().int().min(1990).max(2030),
         vehicle_class: z.enum(["standard", "premium"]).default("standard"),
         incident_description: z.string().max(2000).default(""),
         paint_color: z.string().max(80).default(""),
-        scene: z.string().max(400).default(""),
         impact_area: z.string().max(160).default(""),
         damage_severity: z.enum(["minor", "moderate", "severe"]).default("moderate"),
-        image_model: ImageModelEnum.default("google/gemini-3.1-flash-image-preview"),
-        image_angle_count: z.number().int().min(1).max(4).default(4),
-        images: z
-          .array(
-            z.object({
-              url: z.string().min(1),
-              angle: z.string().max(60),
-              prompt: z.string().max(4000).optional(),
-            }),
-          )
-          .min(0)
-          .max(8)
-          .default([]),
+        demoGenerated: z.boolean().optional().default(false),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const policyNumber =
+      data.policy_number && data.policy_number.trim().length > 0
+        ? data.policy_number.trim()
+        : `POL-${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`;
     const { data: claim, error } = await supabaseAdmin
       .from("claims")
       .insert({
         claim_number: genClaimNumber(),
         policyholder_name: data.policyholder_name,
-        policy_number: `POL-${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`,
+        policy_number: policyNumber,
         vehicle_make: data.vehicle_make,
         vehicle_model: data.vehicle_model,
         vehicle_year: data.vehicle_year,
@@ -85,35 +77,29 @@ export const createSyntheticClaim = createServerFn({ method: "POST" })
         incident_date: new Date().toISOString().slice(0, 10),
         incident_description: data.incident_description,
         paint_color: data.paint_color || null,
-        scene: data.scene || null,
+        scene: null,
         impact_area: data.impact_area || null,
         damage_severity: data.damage_severity,
-        image_model: data.image_model,
-        image_angle_count: data.image_angle_count,
+        image_model: "google/gemini-3.1-flash-image-preview",
+        image_angle_count: 4,
         status: "new",
       })
       .select()
       .single();
     if (error || !claim) throw new Error(error?.message ?? "Failed to create claim");
 
-    if (data.images.length > 0) {
-      await supabaseAdmin.from("claim_images").insert(
-        data.images.map((img) => ({
-          claim_id: claim.id,
-          url: img.url,
-          angle: img.angle,
-          prompt: img.prompt ?? null,
-          ai_generated: true,
-        })),
-      );
-    }
+    const actorRole = context.roles.includes("superadmin")
+      ? "superadmin"
+      : context.roles.includes("adjuster")
+        ? "adjuster"
+        : "agent";
 
     await supabaseAdmin.from("audit_log").insert({
       claim_id: claim.id,
       actor_user_id: context.userId,
-      actor_role: "superadmin",
-      action: "claim_created_synthetic",
-      details: { image_count: data.images.length } as never,
+      actor_role: actorRole,
+      action: "claim_created",
+      details: { source: data.demoGenerated ? "demo_generated" : "manual" } as never,
       ...getRequestAuditContext(),
     });
 
