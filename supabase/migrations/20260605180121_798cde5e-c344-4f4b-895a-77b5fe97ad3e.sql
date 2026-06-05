@@ -1,0 +1,1 @@
+ALTER TABLE public.assessment_line_items ADD COLUMN IF NOT EXISTS estimate_rationale TEXT;
