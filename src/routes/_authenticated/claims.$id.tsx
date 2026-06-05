@@ -1227,7 +1227,7 @@ function AddLineItemDialog({
           <div>
             <Button
               type="button"
-              variant="outline"
+              variant="ai"
               onClick={lookUpEstimate}
               disabled={!canEstimate}
             >
