@@ -10,6 +10,55 @@ export const Route = createFileRoute("/_authenticated/audit")({
   component: AuditPage,
 });
 
+function AuditLogRow({ log }: { log: AuditRow }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="grid grid-cols-[180px_220px_180px_minmax(0,1fr)] items-start gap-4 px-5 py-3 text-sm">
+      <span className="text-xs text-muted-foreground">{formatDateTime(log.created_at)}</span>
+      <span className="font-mono text-xs break-words">{log.action}</span>
+      <span className="text-xs break-words">
+        {log.profiles?.display_name ?? "—"} <span className="text-muted-foreground">({log.actor_role})</span>
+      </span>
+      <div className="min-w-0 text-xs">
+        {log.claim_id ? (
+          <Link to="/claims/$id" params={{ id: log.claim_id }} className="font-mono hover:underline">
+            {log.claims?.claim_number ?? log.claim_id.slice(0, 8)}
+          </Link>
+        ) : (
+          "—"
+        )}
+        {log.details ? (
+          <div className="mt-1">
+            <button
+              onClick={() => setExpanded((e) => !e)}
+              className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {expanded ? (
+                <>
+                  <ChevronUp className="w-3 h-3" /> Hide details
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3" /> Show details
+                </>
+              )}
+            </button>
+            {expanded ? (
+              <pre className="mt-1 whitespace-pre-wrap break-words text-muted-foreground bg-muted/50 rounded px-2 py-1.5 font-mono text-[11px] leading-relaxed">
+                {JSON.stringify(log.details, null, 2)}
+              </pre>
+            ) : (
+              <div className="text-muted-foreground mt-0.5 truncate">
+                {JSON.stringify(log.details)}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 interface AuditRow {
   id: string;
   created_at: string;
