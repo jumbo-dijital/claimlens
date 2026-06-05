@@ -1480,17 +1480,32 @@ function AuditTimeline({ claimId }: { claimId: string }) {
 function CommentComposer({ claimId }: { claimId: string }) {
   const addComment = useServerFn(addClaimComment);
   const queryClient = useQueryClient();
+  const { data: me } = useMe();
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const submit = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
     setPosting(true);
+    const queryKey = ["claim-audit", claimId];
+    const optimisticRow: AuditRow = {
+      id: `optimistic-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      action: "comment",
+      actor_role: (me?.roles?.[0] ?? null) as AuditRow["actor_role"],
+      actor_user_id: me?.userId ?? null,
+      details: { text: trimmed },
+      profiles: me?.profile ? { display_name: me.profile.display_name } : null,
+    };
+    const previous = queryClient.getQueryData<AuditRow[]>(queryKey);
+    queryClient.setQueryData<AuditRow[]>(queryKey, (old = []) => [optimisticRow, ...old]);
+    setText("");
     try {
       await addComment({ data: { claimId, text: trimmed } });
-      setText("");
-      queryClient.invalidateQueries({ queryKey: ["claim-audit", claimId] });
+      queryClient.invalidateQueries({ queryKey });
     } catch (e) {
+      queryClient.setQueryData(queryKey, previous);
+      setText(trimmed);
       toast.error(e instanceof Error ? e.message : "Could not post comment");
     } finally {
       setPosting(false);
