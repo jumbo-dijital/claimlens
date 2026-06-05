@@ -64,6 +64,7 @@ function NewClaimPage() {
         initial={emptyClaimDetails()}
         valuesOverride={aiSeed}
         saveLabel="Create claim"
+        alwaysEnableSave
         headerExtra={
           isSuperadmin ? (
             <Button

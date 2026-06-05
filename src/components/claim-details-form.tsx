@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,17 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 export interface ClaimDetailsValues {
   policyholder_name: string;
@@ -56,32 +46,40 @@ interface Props {
   initial: ClaimDetailsValues;
   saveLabel?: string;
   onSave: (values: ClaimDetailsValues) => Promise<void>;
-  onDelete?: () => Promise<void>;
   headerExtra?: ReactNode;
   title?: string;
   valuesOverride?: ClaimDetailsValues;
+  /** When true, Save remains enabled even when the form has not been edited (e.g. for new claim creation). */
+  alwaysEnableSave?: boolean;
 }
 
 export function ClaimDetailsForm({
   initial,
   saveLabel = "Save",
   onSave,
-  onDelete,
   headerExtra,
   title = "Claim details",
   valuesOverride,
+  alwaysEnableSave = false,
 }: Props) {
   const [form, setForm] = useState<ClaimDetailsValues>(initial);
+  const [baseline, setBaseline] = useState<ClaimDetailsValues>(initial);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (valuesOverride) setForm(valuesOverride);
+    if (valuesOverride) {
+      setForm(valuesOverride);
+      setBaseline(valuesOverride);
+    }
   }, [valuesOverride]);
 
   const set = <K extends keyof ClaimDetailsValues>(k: K, v: ClaimDetailsValues[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const isDirty = useMemo(
+    () => (Object.keys(form) as (keyof ClaimDetailsValues)[]).some((k) => form[k] !== baseline[k]),
+    [form, baseline],
+  );
 
   return (
     <Card>
@@ -165,51 +163,19 @@ export function ClaimDetailsForm({
               setSaving(true);
               try {
                 await onSave(form);
+                setBaseline(form);
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "Save failed");
               } finally {
                 setSaving(false);
               }
             }}
-            disabled={saving}
+            disabled={saving || (!alwaysEnableSave && !isDirty)}
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {saveLabel}
           </Button>
-          {onDelete && (
-            <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </Button>
-          )}
         </div>
-        {onDelete && (
-          <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this claim?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This removes the claim and all its images, assessments, line items, and reviews. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    setDeleting(true);
-                    try {
-                      await onDelete();
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Delete failed");
-                      setDeleting(false);
-                    }
-                  }}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </CardContent>
     </Card>
   );
