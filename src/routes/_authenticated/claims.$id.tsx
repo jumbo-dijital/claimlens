@@ -593,22 +593,33 @@ function ImagePanel({
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
 
-      const finals = await Promise.all(
-        angles.map(async (angle, i) => {
-          const prompt = buildDamagePrompt(angle, claim);
-          const finalUrl = await streamImage(
-            "/api/generate-damage-image",
-            { prompt, model: claim.image_model ?? "google/gemini-3.1-flash-image-preview" },
-            (dataUrl, isFinal) => {
-              setPreviews((p) =>
-                p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
-              );
-            },
-            { Authorization: `Bearer ${token}` },
-          );
-          return { url: finalUrl, angle, prompt };
-        }),
-      );
+      const model = claim.image_model ?? "google/gemini-3.1-flash-image-preview";
+      const results: { url: string; angle: string; prompt: string }[] = new Array(angles.length);
+
+      const generateAt = async (i: number, referenceImages?: string[]) => {
+        const angle = angles[i];
+        const prompt = buildDamagePrompt(angle, claim);
+        const finalUrl = await streamImage(
+          "/api/generate-damage-image",
+          { prompt, model, ...(referenceImages?.length ? { referenceImages } : {}) },
+          (dataUrl, isFinal) => {
+            setPreviews((p) =>
+              p.map((x, idx) => (idx === i ? { ...x, url: dataUrl, final: isFinal } : x)),
+            );
+          },
+          { Authorization: `Bearer ${token}` },
+        );
+        results[i] = { url: finalUrl, angle, prompt };
+        return finalUrl;
+      };
+
+      // Generate the first angle alone to establish the vehicle's appearance,
+      // then generate the remaining angles in parallel using it as a visual
+      // reference so every photo depicts the same specific car.
+      const anchorUrl = await generateAt(0);
+      await Promise.all(angles.slice(1).map((_, j) => generateAt(j + 1, [anchorUrl])));
+
+      const finals = results;
       await onReplace(finals);
 
       setPreviews([]);
