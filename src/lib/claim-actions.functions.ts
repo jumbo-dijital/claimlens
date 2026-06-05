@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireRole } from "@/lib/auth-roles.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { getRequestAuditContext } from "@/lib/audit-context.server";
+import { insertAuditLog } from "@/lib/audit-log.server";
 
 function genClaimNumber() {
   const n = Math.floor(Math.random() * 900000 + 100000);
