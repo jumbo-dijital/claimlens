@@ -438,10 +438,12 @@ function ClaimDetail() {
         </Card>
 
         {assessment && claim.status !== "submitted" && claim.status !== "approved" && claim.status !== "rejected" && (
-          <Button onClick={onSubmit}>
-            <Send className="mr-2 h-4 w-4" />
-            Submit for approval
-          </Button>
+          <div className="flex justify-end">
+            <Button onClick={onSubmit}>
+              <Send className="mr-2 h-4 w-4" />
+              Submit for approval
+            </Button>
+          </div>
         )}
       </div>
 
