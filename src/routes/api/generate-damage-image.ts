@@ -11,6 +11,10 @@ const ALLOWED_MODELS = [
 const BodySchema = z.object({
   prompt: z.string().min(1).max(4000),
   model: z.enum(ALLOWED_MODELS).default("google/gemini-3.1-flash-image-preview"),
+  referenceImages: z
+    .array(z.string().regex(/^data:image\/(png|jpeg|webp);base64,/).max(15_000_000))
+    .max(4)
+    .optional(),
 });
 
 export const Route = createFileRoute("/api/generate-damage-image")({
