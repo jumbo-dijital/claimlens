@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload } from "lucide-react";
+import { Sparkles, Send, Trash2, Pencil, Save, Loader2, Plus, ThumbsUp, ThumbsDown, Upload, Info } from "lucide-react";
 import { analyzeClaim } from "@/lib/ai/analyze-claim.functions";
 import {
   editLineItem,
@@ -328,7 +328,8 @@ function ClaimDetail() {
             {!assessment ? (
               <div className="space-y-3">
                 {images.length === 0 && (
-                  <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 shrink-0" />
                     Add damage photos before starting the assessment
                   </div>
                 )}
