@@ -1567,6 +1567,7 @@ function CommentComposer({ claimId }: { claimId: string }) {
         }}
         placeholder="Add a comment…"
         rows={2}
+        className="bg-yellow-50"
       />
       <div className="mt-2 flex justify-end">
         <Button size="sm" onClick={submit} disabled={posting || text.trim().length === 0}>
