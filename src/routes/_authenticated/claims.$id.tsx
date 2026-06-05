@@ -1501,6 +1501,12 @@ function CommentComposer({ claimId }: { claimId: string }) {
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && text.trim().length > 0) {
+            e.preventDefault();
+            submit();
+          }
+        }}
         placeholder="Add a comment…"
         rows={2}
       />
