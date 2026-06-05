@@ -78,6 +78,7 @@ interface LineItem {
   confidence: number | null;
   source: string;
   rationale: string | null;
+  estimate_rationale: string | null;
   is_deleted: boolean;
 }
 
