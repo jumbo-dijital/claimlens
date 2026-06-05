@@ -197,6 +197,15 @@ function ClaimDetail() {
               Submit for approval
             </Button>
           )}
+          {isSuperadmin && (
+            <DeleteClaimButton
+              onDelete={async () => {
+                await del({ data: { claimId: id } });
+                toast.success("Claim deleted");
+                router.navigate({ to: "/" });
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -219,16 +228,8 @@ function ClaimDetail() {
           refreshActivity();
           toast.success("Claim updated");
         }}
-        onDelete={
-          isSuperadmin
-            ? async () => {
-                await del({ data: { claimId: id } });
-                toast.success("Claim deleted");
-                router.navigate({ to: "/" });
-              }
-            : undefined
-        }
       />
+
 
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
