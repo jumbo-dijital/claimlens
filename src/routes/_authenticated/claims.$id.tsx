@@ -815,6 +815,45 @@ function GenerateImagesDialog({
 }) {
   const imageModel = (claim.image_model as ImageModel) ?? "google/gemini-3.1-flash-image-preview";
   const angleCount = claim.image_angle_count ?? 4;
+  const genScene = useServerFn(generateSyntheticScene);
+  const [sceneLoading, setSceneLoading] = useState(false);
+  const hasScene = !!claim.scene && claim.scene.trim().length > 0;
+
+  // Auto-prefill the scene with an AI suggestion the first time the dialog opens
+  // for a claim that has no scene yet.
+  useEffect(() => {
+    if (!open || hasScene || sceneLoading) return;
+    let cancelled = false;
+    setSceneLoading(true);
+    (async () => {
+      try {
+        const { scene } = await genScene({
+          data: {
+            vehicle_year: claim.vehicle_year,
+            vehicle_make: claim.vehicle_make,
+            vehicle_model: claim.vehicle_model,
+            impact_area: claim.impact_area ?? undefined,
+            damage_severity:
+              (claim.damage_severity as "minor" | "moderate" | "severe" | null) ?? undefined,
+          },
+        });
+        if (!cancelled && scene) {
+          await onUpdateClaim({ scene });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : "Could not suggest a scene");
+        }
+      } finally {
+        if (!cancelled) setSceneLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -823,12 +862,20 @@ function GenerateImagesDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs">Scene / setting</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Scene / setting</Label>
+              {sceneLoading && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Suggesting…
+                </span>
+              )}
+            </div>
             <Textarea
               value={claim.scene ?? ""}
               onChange={(e) => onUpdateClaim({ scene: e.target.value })}
-              placeholder="e.g. suburban driveway, sunny afternoon"
+              placeholder={sceneLoading ? "Generating a suggestion…" : "e.g. suburban driveway, sunny afternoon"}
               rows={3}
+              disabled={sceneLoading}
             />
           </div>
           <div>
