@@ -420,6 +420,13 @@ function ClaimDetail() {
             )}
           </CardContent>
         </Card>
+
+        {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
+          <Button onClick={onSubmit} className="w-full">
+            <Send className="mr-2 h-4 w-4" />
+            Submit for approval
+          </Button>
+        )}
       </div>
 
       {editing && (
@@ -1417,7 +1424,7 @@ function AuditTimeline({ claimId }: { claimId: string }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Activity ({rows.length})</CardTitle>
+        <CardTitle className="text-base">Activity history</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
