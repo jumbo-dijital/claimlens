@@ -420,6 +420,13 @@ function ClaimDetail() {
             )}
           </CardContent>
         </Card>
+
+        {assessment && claim.status !== "submitted" && claim.status !== "approved" && (
+          <Button onClick={onSubmit} className="w-full">
+            <Send className="mr-2 h-4 w-4" />
+            Submit for approval
+          </Button>
+        )}
       </div>
 
       {editing && (
