@@ -55,6 +55,51 @@ const IMPACT_AREAS = [
 ];
 const SEVERITIES = ["minor", "moderate", "severe"] as const;
 
+const FIRST_NAMES = [
+  "Aaliyah", "Aaron", "Adaeze", "Adriana", "Ahmed", "Aiko", "Aisha", "Akira",
+  "Alejandro", "Alessia", "Amara", "Amir", "Anika", "Anton", "Arjun", "Astrid",
+  "Beatriz", "Bjorn", "Bohdan", "Camille", "Caoimhe", "Carlos", "Catalina",
+  "Cesar", "Chiamaka", "Chloe", "Connor", "Damaris", "Daniela", "Darius",
+  "Dejan", "Dimitri", "Eamon", "Eira", "Eitan", "Elena", "Elias", "Emeka",
+  "Emiko", "Esme", "Fatima", "Felipe", "Femi", "Finn", "Florence", "Gabriel",
+  "Genevieve", "Giulia", "Hamza", "Hana", "Harriet", "Hiroshi", "Ibrahim",
+  "Imogen", "Indira", "Ingrid", "Isabela", "Ivan", "Jacinta", "Jamal",
+  "Javier", "Jelena", "Jin", "Jonas", "Kai", "Kaori", "Kasper", "Kemal",
+  "Keziah", "Kofi", "Lars", "Leila", "Leonardo", "Liesel", "Linnea", "Luca",
+  "Maja", "Malik", "Margot", "Mateo", "Mei", "Mikael", "Milan", "Mira",
+  "Nadia", "Nasir", "Niamh", "Nikolai", "Nuria", "Oduwa", "Olamide", "Oskar",
+  "Paloma", "Petra", "Priya", "Quinn", "Rafael", "Ramona", "Ravi", "Rohan",
+  "Rosalind", "Salma", "Sanjay", "Saoirse", "Sebastien", "Seun", "Sigrid",
+  "Soraya", "Stellan", "Sven", "Tadeusz", "Takeshi", "Tamsin", "Tarek",
+  "Thandiwe", "Theo", "Tomas", "Ursula", "Valentina", "Vikram", "Wei",
+  "Wiremu", "Xiulan", "Yara", "Yusuf", "Zara", "Zayd", "Zofia",
+];
+
+const LAST_NAMES = [
+  "Abara", "Adeyemi", "Aguilar", "Ahmadi", "Alvarado", "Andersen", "Antonov",
+  "Bakker", "Balogh", "Banerjee", "Bauer", "Bergstrom", "Bianchi", "Bjornson",
+  "Brennan", "Cabrera", "Castillo", "Chakraborty", "Chen", "Chowdhury",
+  "Christiansen", "Cohen", "Costa", "Dabrowski", "Da Silva", "De Luca",
+  "Delgado", "Dimitriou", "Donnelly", "Dubois", "Eriksson", "Esposito",
+  "Fadeyi", "Falconer", "Fischer", "Fitzgerald", "Fontaine", "Garcia",
+  "Gonzalez", "Grimaldi", "Haddad", "Halvorsen", "Hassan", "Hayashi",
+  "Hernandez", "Hofmann", "Holloway", "Ibrahim", "Iqbal", "Ivanov", "Jang",
+  "Janssen", "Jimenez", "Johansson", "Kaminski", "Kapoor", "Karlsson",
+  "Kavanagh", "Khan", "Kobayashi", "Kowalski", "Krause", "Kumar", "Larsen",
+  "Lefebvre", "Lindqvist", "Lombardi", "Macdonald", "Maguire", "Mahmood",
+  "Marchetti", "Martinelli", "Matsuda", "Mbeki", "Meier", "Mendoza", "Mercer",
+  "Mikkelsen", "Mistry", "Mitchell", "Mohamed", "Moreau", "Mwangi", "Nakamura",
+  "Navarro", "Nguyen", "Nilsson", "Novak", "Nowak", "Obi", "Okafor",
+  "Olsen", "O'Rourke", "Ortega", "Pakulski", "Park", "Patel", "Pereira",
+  "Petrov", "Pham", "Popescu", "Quintero", "Rahman", "Ramirez", "Rasmussen",
+  "Reyes", "Ricci", "Rivera", "Romano", "Rossi", "Ruiz", "Saito", "Sanchez",
+  "Santos", "Sato", "Schmidt", "Schneider", "Sharma", "Singh", "Skarsgard",
+  "Soto", "Stankovic", "Stojanovic", "Suzuki", "Takahashi", "Tanaka", "Torres",
+  "Tremblay", "Vargas", "Vasquez", "Velazquez", "Venkatesh", "Virtanen",
+  "Vogel", "Wagner", "Wallace", "Watanabe", "Weber", "Whittaker", "Williamson",
+  "Yamamoto", "Yilmaz", "Zhang", "Zielinski",
+];
+
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
