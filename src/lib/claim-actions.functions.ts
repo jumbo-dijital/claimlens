@@ -206,7 +206,7 @@ export const replaceClaimImages = createServerFn({ method: "POST" })
         images: z
           .array(
             z.object({
-              url: z.string().min(1),
+              url: z.string().min(1).max(16_000_000),
               angle: z.string().max(60),
               prompt: z.string().max(4000),
             }),
