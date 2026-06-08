@@ -121,10 +121,12 @@ export const generateSyntheticClaimDetails = createServerFn({ method: "POST" })
     const scene = pick(SCENES);
     const impact_area = pick(IMPACT_AREAS);
     const damage_severity = pick(SEVERITIES);
+    const policyholder_name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
 
     const sys = `You fabricate realistic but entirely fictional auto-insurance claim records for a QA/demo environment. Never use the terms "driver side" or "passenger side" — always describe sides as left or right from the perspective of an occupant sitting inside the vehicle facing forward (the automotive convention).`;
 
     const userPrompt = `Fabricate ONE synthetic claim record using these PRE-SELECTED randomized parameters. Do not substitute different values for these — use them exactly:
+- policyholder_name: "${policyholder_name}"
 - vehicle_make: "${make}"
 - body style: ${bodyStyle} (pick a real ${make} ${bodyStyle} model from the year ${year}; if ${make} did not sell a ${bodyStyle} in ${year}, pick their closest real model that year)
 - vehicle_year: ${year}
@@ -134,7 +136,7 @@ export const generateSyntheticClaimDetails = createServerFn({ method: "POST" })
 - impact_area: "${impact_area}"
 - damage_severity: "${damage_severity}"
 
-Then invent: a plausible policyholder_name, and a brief 1-3 sentence incident_description from the policyholder's perspective consistent with the impact_area and severity above.
+Then invent only: a brief 1-3 sentence incident_description from the policyholder's perspective consistent with the impact_area and severity above.
 
 Respond with ONLY a JSON object (no markdown, no commentary) with exactly these keys: policyholder_name (string), vehicle_make (string), vehicle_model (string), vehicle_year (number), vehicle_class ("standard"|"premium"), paint_color (string), scene (string), impact_area (string), damage_severity ("minor"|"moderate"|"severe"), incident_description (string).`;
 
