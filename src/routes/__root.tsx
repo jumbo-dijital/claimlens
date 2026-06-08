@@ -80,14 +80,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "ClaimLens" },
+      { name: "description", content: "ClaimLens is an AI platform for car insurance claims, providing automated damage assessments and repair estimates." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "ClaimLens" },
+      { property: "og:description", content: "ClaimLens is an AI platform for car insurance claims, providing automated damage assessments and repair estimates." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "ClaimLens" },
+      { name: "twitter:description", content: "ClaimLens is an AI platform for car insurance claims, providing automated damage assessments and repair estimates." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2e3d3e29-1a84-4a62-8a28-13bce25d6278/id-preview-e9be31be--28b599dd-ea64-4bf0-b0e4-c4a67383662d.lovable.app-1780938409853.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2e3d3e29-1a84-4a62-8a28-13bce25d6278/id-preview-e9be31be--28b599dd-ea64-4bf0-b0e4-c4a67383662d.lovable.app-1780938409853.png" },
     ],
     links: [
       {
