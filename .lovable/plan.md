@@ -1,17 +1,36 @@
-Generate a 1024×1024 PNG app icon for ClaimLens and deliver it as a downloadable artifact.
+## Problem
 
-## What I'll do
+When generating claim images, the Lovable AI Gateway sometimes returns a successful `image_generation.completed` SSE event with `output_tokens: 0` and **no `b64_json`** — i.e. the model (e.g. `google/gemini-3.1-flash-image-preview`) accepted the request but produced no image, typically a safety-style refusal or a model-side failure.
 
-1. Use the image generator (premium quality, opaque background) to produce a polished ClaimLens icon:
-   - Stylized scan-eye / lens mark on the brand blue (`#3b82f6`)
-   - Solid background (no transparency — Lovable's app icon slot expects an opaque square)
-   - Centered, generous padding so it survives rounded-corner masking
-   - No text (app icons render small; the wordmark would be illegible)
-2. Save to `/mnt/documents/claimlens-icon-1024.png`
-3. QA it by inspecting the rendered image, regenerate if the composition is off
-4. Surface it via a `<presentation-artifact>` tag so you can download it
+Today's parser in `src/lib/stream-image.ts` only marks the stream as "completed" when an event carries a `b64_json` field. With no `b64_json` arriving at all, `sawFinal` stays `false`, `lastDataUrl` stays empty, and we throw the generic:
 
-## Notes
+> Image stream ended without completion
 
-- 1024×1024 is the master size Lovable uses; it downsamples for smaller slots.
-- No code changes to the project — this is a one-off artifact, not a favicon swap. If you later want it wired in as the site favicon / `apple-touch-icon`, that's a separate step.
+That bubbles up as a red toast and the user has no idea what happened or what to do about it.
+
+## Fix
+
+Make the SSE parser distinguish "stream ended early / network issue" from "model returned no image", and surface a useful message in the latter case.
+
+### Change `src/lib/stream-image.ts`
+
+- Track whether we received an `image_generation.completed` event at all, independent of whether it carried `b64_json`.
+- If the stream ends with a `completed` event but zero image frames were ever delivered, throw a specific error:
+  `"The image model returned no image (it may have refused the prompt). Try again, rephrase the prompt, or pick a different model."`
+- Keep the existing fallback that promotes the last partial frame to final when the upstream cuts off mid-stream.
+- Keep the existing generic error only for the true "stream cut off with nothing at all" case.
+
+### No other changes
+
+- No server route changes (the upstream behavior is correct; we just need to interpret it).
+- No UI changes beyond the improved toast text that already comes from the thrown error message in `claims.$id.tsx` (`toast.error(e instanceof Error ? e.message : ...)`).
+
+## Technical notes
+
+- The relevant SSE shape we saw:
+  ```
+  event: image_generation.completed
+  data: {"type":"image_generation.completed","usage":{"output_tokens":0,...}}
+  ```
+- Detection rule: `eventName === "image_generation.completed"` AND no `b64_json` ever observed (no partials, no final).
+- Files touched: `src/lib/stream-image.ts` only.
