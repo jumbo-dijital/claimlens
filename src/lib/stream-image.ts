@@ -18,6 +18,7 @@ export async function streamImage(
   let finalDataUrl = "";
   let lastDataUrl = "";
   let sawFinal = false;
+  let sawCompletedEvent = false;
 
   try {
     while (true) {
@@ -40,6 +41,7 @@ export async function streamImage(
           eventName !== "image_generation.completed"
         )
           continue;
+        if (eventName === "image_generation.completed") sawCompletedEvent = true;
         try {
           const payload = JSON.parse(dataLine) as { b64_json?: string };
           if (!payload.b64_json) continue;
@@ -63,6 +65,13 @@ export async function streamImage(
     flushSync(() => onFrame(lastDataUrl, true));
     return lastDataUrl;
   }
-  if (!sawFinal) throw new Error("Image stream ended without completion");
+  if (!sawFinal) {
+    if (sawCompletedEvent) {
+      throw new Error(
+        "The image model returned no image (it may have refused the prompt). Try again, rephrase the prompt, or pick a different model.",
+      );
+    }
+    throw new Error("Image stream ended without completion");
+  }
   return finalDataUrl;
 }
