@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const router = useRouter();
+  const notifySigninFn = useServerFn(notifySignin);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +42,7 @@ function AuthPage() {
       return;
     }
     // Fire-and-forget sign-in notification (don't block sign-in on email queue).
-    notifySignin().catch((e) => console.error("notifySignin failed", e));
+    notifySigninFn().catch((e) => console.error("notifySignin failed", e));
     toast.success("Signed in");
     router.navigate({ to: "/" });
   };
