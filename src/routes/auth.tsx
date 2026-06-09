@@ -39,6 +39,8 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    // Fire-and-forget sign-in notification (don't block sign-in on email queue).
+    notifySignin().catch((e) => console.error("notifySignin failed", e));
     toast.success("Signed in");
     router.navigate({ to: "/" });
   };
