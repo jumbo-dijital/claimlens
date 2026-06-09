@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const SENDER_DOMAIN = "notify.jonathanburton.org";
 const FROM_ADDRESS = `ClaimLens <alerts@${SENDER_DOMAIN}>`;
@@ -57,6 +56,7 @@ export const notifySignin = createServerFn({ method: "POST" })
 </body></html>`;
 
     const messageId = `signin-${userId}-${Date.now()}`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin.rpc("enqueue_email", {
       queue_name: "transactional_emails",
