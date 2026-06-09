@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScanEye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifySignin } from "@/lib/notify-signin.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -38,6 +39,8 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    // Fire-and-forget sign-in notification (don't block sign-in on email queue).
+    notifySignin().catch((e) => console.error("notifySignin failed", e));
     toast.success("Signed in");
     router.navigate({ to: "/" });
   };
