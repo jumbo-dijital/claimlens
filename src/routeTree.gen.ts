@@ -16,6 +16,7 @@ import { Route as ApiGenerateDamageImageRouteImport } from './routes/api/generat
 import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as AuthenticatedClaimsNewRouteImport } from './routes/_authenticated/claims.new'
 import { Route as AuthenticatedClaimsIdRouteImport } from './routes/_authenticated/claims.$id'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as AuthenticatedClaimsIdReviewRouteImport } from './routes/_authenticated/claims.$id.review'
 
 const AuthRoute = AuthRouteImport.update({
@@ -52,6 +53,12 @@ const AuthenticatedClaimsIdRoute = AuthenticatedClaimsIdRouteImport.update({
   path: '/claims/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedClaimsIdReviewRoute =
   AuthenticatedClaimsIdReviewRouteImport.update({
     id: '/review',
@@ -67,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/claims/new': typeof AuthenticatedClaimsNewRoute
   '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -76,6 +84,7 @@ export interface FileRoutesByTo {
   '/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/claims/new': typeof AuthenticatedClaimsNewRoute
   '/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,6 +96,7 @@ export interface FileRoutesById {
   '/_authenticated/claims/$id': typeof AuthenticatedClaimsIdRouteWithChildren
   '/_authenticated/claims/new': typeof AuthenticatedClaimsNewRoute
   '/_authenticated/claims/$id/review': typeof AuthenticatedClaimsIdReviewRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/claims/$id'
     | '/claims/new'
     | '/claims/$id/review'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/claims/$id'
     | '/claims/new'
     | '/claims/$id/review'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/_authenticated'
@@ -117,12 +129,14 @@ export interface FileRouteTypes {
     | '/_authenticated/claims/$id'
     | '/_authenticated/claims/new'
     | '/_authenticated/claims/$id/review'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiGenerateDamageImageRoute: typeof ApiGenerateDamageImageRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -176,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClaimsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/claims/$id/review': {
       id: '/_authenticated/claims/$id/review'
       path: '/review'
@@ -220,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiGenerateDamageImageRoute: ApiGenerateDamageImageRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
