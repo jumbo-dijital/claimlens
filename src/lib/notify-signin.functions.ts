@@ -58,6 +58,19 @@ export const notifySignin = createServerFn({ method: "POST" })
     const messageId = `signin-${userId}-${Date.now()}`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Record the sign-in in the main audit log (visible to all authenticated users).
+    const { error: auditError } = await supabaseAdmin.from("audit_log").insert({
+      action: "auth.signin",
+      actor_user_id: userId,
+      actor_role: "user",
+      ip_address: ip,
+      user_agent: userAgent,
+      details: { email, timestamp },
+    });
+    if (auditError) {
+      console.error("[notifySignin] audit insert failed", auditError);
+    }
+
     const { error } = await supabaseAdmin.rpc("enqueue_email", {
       queue_name: "transactional_emails",
       payload: {
