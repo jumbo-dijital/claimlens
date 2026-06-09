@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScanEye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifySignin } from "@/lib/notify-signin.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
